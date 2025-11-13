@@ -6,6 +6,8 @@ import json
 import time
 
 urlList = [
+    "https://www.smogon.com/forums/threads/zu-swiss-iii-round-6.3773475/",
+    "https://www.smogon.com/forums/threads/zu-swiss-iii-round-5.3773147/",
     "https://www.smogon.com/forums/threads/zu-swiss-iii-round-4.3772774/",
     "https://www.smogon.com/forums/threads/zu-swiss-iii-round-3.3772439/",
     "https://www.smogon.com/forums/threads/zu-swiss-iii-round-2.3772164/"
