@@ -1,0 +1,39 @@
+name: Update test.json
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # every hour; change if you want
+  workflow_dispatch:       # lets you run it manually
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run scraper
+        run: python scraper.py
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes."
+          else
+            git add test.json
+            git commit -m "Update test.json (CI)"
+            git push
+          fi
