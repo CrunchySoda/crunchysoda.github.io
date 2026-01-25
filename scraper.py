@@ -11,7 +11,8 @@ urlList = [
     "https://www.smogon.com/forums/threads/2025-zu-circuit-championship-semifinals-300-prize-pool.3775834/",
     "https://www.smogon.com/forums/threads/2025-zu-circuit-championship-finals-300-prize-pool-won-by-diegoyuhhi-again.3776340/",
     "https://www.smogon.com/forums/threads/zu-open-round-2.3776635/",
-    "https://www.smogon.com/forums/threads/zu-open-round-1.3776292/"
+    "https://www.smogon.com/forums/threads/zu-open-round-1.3776292/",
+    "https://www.smogon.com/forums/threads/usa-vs-world-won-by-world.3775385/"
 ]
 
 def get_team_contents(url: str):
