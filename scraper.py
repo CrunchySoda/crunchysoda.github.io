@@ -6,13 +6,12 @@ import json
 import time
 
 urlList = [
-    "https://www.smogon.com/forums/threads/zu-swiss-iii-quarterfinals.3774325/",
-    "https://www.smogon.com/forums/threads/zu-swiss-iii-round-of-16-play-ins.3773754/",
-    "https://www.smogon.com/forums/threads/zu-swiss-iii-round-6.3773475/",
-    "https://www.smogon.com/forums/threads/zu-swiss-iii-round-5.3773147/",
-    "https://www.smogon.com/forums/threads/zu-swiss-iii-round-4.3772774/",
-    "https://www.smogon.com/forums/threads/zu-swiss-iii-round-3.3772439/",
-    "https://www.smogon.com/forums/threads/zu-swiss-iii-round-2.3772164/"
+    "https://www.smogon.com/forums/threads/2025-zu-circuit-championship-round-of-16-300-prize-pool.3775270/",
+    "https://www.smogon.com/forums/threads/2025-zu-circuit-championship-quarterfinals-300-prize-pool.3775582/",
+    "https://www.smogon.com/forums/threads/2025-zu-circuit-championship-semifinals-300-prize-pool.3775834/",
+    "https://www.smogon.com/forums/threads/2025-zu-circuit-championship-finals-300-prize-pool-won-by-diegoyuhhi-again.3776340/",
+    "https://www.smogon.com/forums/threads/zu-open-round-2.3776635/",
+    "https://www.smogon.com/forums/threads/zu-open-round-1.3776292/"
 ]
 
 def get_team_contents(url: str):
