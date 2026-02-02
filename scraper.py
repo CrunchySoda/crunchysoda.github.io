@@ -90,8 +90,14 @@ def get_all_replay_links(url: str):
 
 links = []
 
-for url in urlList:
-    links = links + get_all_replay_links(url)
+for thread_url in urlList:
+    thread_links = get_all_replay_links(thread_url)
+    for replay in thread_links:
+        links.append({
+            "thread": thread_url,
+            "replay": replay
+        })
+
 
 for x in links:
     print(x)
@@ -102,23 +108,20 @@ if len(links) > 0:
 
     links.reverse()
     
-    for link in tqdm(links, colour="green", desc="Fetching teams.."):
-        teamcontents = get_team_contents(link)
-    
-        while teamcontents == {}:
-            time.sleep(0.5)
-            teamcontents = get_team_contents(link)
-    
-            if teamcontents == None:
-                continue
-    
-        if teamcontents == None:
-            continue
-    
-        output.append({
-            "link": link,
-            "teams": teamcontents
-        })
+    for item in tqdm(links, colour="green", desc="Fetching teams.."):
+    link = item["replay"]
+    thread = item["thread"]
+
+    teamcontents = get_team_contents(link)
+    if teamcontents is None:
+        continue
+
+    output.append({
+        "thread": thread,
+        "link": link,
+        "teams": teamcontents
+    })
+
     
     # print(json.dumps(output))
     # print(output)
