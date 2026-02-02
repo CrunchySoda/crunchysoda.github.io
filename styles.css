@@ -37,10 +37,10 @@ button:hover { filter: brightness(1.05); }
 .mons { display:flex; flex-wrap: wrap; gap: 6px; }
 .mon { background:#1f1f2c; border:1px solid #2a2a3a; border-radius:999px; padding: 4px 10px; font-size: 12px; }
 .monImg {
-  width: 32px;
-  height: 32px;
-  margin-right: 6px;
-  vertical-align: middle;
+  width: 80px;
+  height: 80px;
+  image-rendering: pixelated;
 }
+
 
 small { opacity: 0.8; }
