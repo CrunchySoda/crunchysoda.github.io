@@ -1,7 +1,7 @@
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
 
-const threadSelect = document.getElementById("threadFilter");
+const tournamentSelect = document.getElementById("tournamentFilter");
 const playerInput = document.getElementById("playerFilter");
 const pokemonInput = document.getElementById("pokemonFilter");
 const clearBtn = document.getElementById("clearBtn");
@@ -12,65 +12,47 @@ function norm(s) {
   return (s ?? "").toString().trim().toLowerCase();
 }
 
-function threadLabel(url) {
-  if (!url) return "Unknown thread";
-  try {
-    // Make it readable: show the last part of the thread URL
-    const u = new URL(url);
-    const parts = u.pathname.split("/").filter(Boolean);
-    const last = parts[parts.length - 1] || u.hostname;
-    return last.replace(/[-_]/g, " ");
-  } catch {
-    return url;
-  }
+function cleanMon(mon) {
+  // "Froslass, F" -> "Froslass"
+  // "Oricorio-Pa'u, M" -> "Oricorio-Pa'u"
+  return (mon ?? "").toString().split(",")[0].trim();
 }
 
-function getThreads(data) {
-  const set = new Map(); // label -> url
-  for (const item of data) {
-    const t = item.thread || "";
-    if (!t) continue;
-    set.set(threadLabel(t), t);
-  }
-  return [...set.entries()].sort((a,b) => a[0].localeCompare(b[0]));
-}
-
-function populateThreadDropdown(data) {
+function populateTournamentDropdown(data) {
   // keep first option, wipe the rest
-  while (threadSelect.options.length > 1) threadSelect.remove(1);
+  while (tournamentSelect.options.length > 1) tournamentSelect.remove(1);
 
-  const threads = getThreads(data);
-  for (const [label, url] of threads) {
+  const groups = [...new Set(data.map(d => d.tournament).filter(Boolean))].sort();
+
+  for (const g of groups) {
     const opt = document.createElement("option");
-    opt.value = url;
-    opt.textContent = label;
-    threadSelect.appendChild(opt);
+    opt.value = g;
+    opt.textContent = g;
+    tournamentSelect.appendChild(opt);
   }
 
-  // If there are no thread fields yet, explain it
-  if (threads.length === 0) {
+  if (groups.length === 0) {
     const opt = document.createElement("option");
     opt.value = "__none__";
-    opt.textContent = "No thread data (update scraper)";
-    threadSelect.appendChild(opt);
-    threadSelect.value = "__all__";
+    opt.textContent = "No tournament data (check test.json)";
+    tournamentSelect.appendChild(opt);
+    tournamentSelect.value = "__all__";
   }
 }
 
 function matchItem(item) {
-  const threadValue = threadSelect.value;
+  const tournamentValue = tournamentSelect.value;
   const p = norm(playerInput.value);
   const m = norm(pokemonInput.value);
 
-  // Thread filter
-  if (threadValue !== "__all__" && threadValue !== "__none__") {
-    if ((item.thread || "") !== threadValue) return false;
+  // Tournament filter
+  if (tournamentValue !== "__all__" && tournamentValue !== "__none__") {
+    if ((item.tournament || "") !== tournamentValue) return false;
   }
 
-  // Flatten teams into searchable text
   const teams = item.teams || {};
   const players = Object.values(teams).map(x => x?.name || "");
-  const mons = Object.values(teams).flatMap(x => x?.team || []);
+  const mons = Object.values(teams).flatMap(x => (x?.team || []).map(cleanMon));
 
   if (p) {
     const ok = players.some(name => norm(name).includes(p));
@@ -112,12 +94,27 @@ function render(data) {
 
     const right = document.createElement("div");
     const t = document.createElement("small");
-    t.textContent = item.thread ? `Thread: ${threadLabel(item.thread)}` : "Thread: (not in data)";
+    t.textContent = `Tournament: ${item.tournament || "Unknown"}`;
     right.appendChild(t);
 
     top.appendChild(left);
     top.appendChild(right);
     card.appendChild(top);
+
+    // Optional: show source thread link if present
+    if (item.thread_url) {
+      const threadLine = document.createElement("div");
+      threadLine.style.marginTop = "6px";
+
+      const threadA = document.createElement("a");
+      threadA.href = item.thread_url;
+      threadA.target = "_blank";
+      threadA.rel = "noreferrer";
+      threadA.textContent = "Source thread";
+
+      threadLine.appendChild(threadA);
+      card.appendChild(threadLine);
+    }
 
     const teamsWrap = document.createElement("div");
     teamsWrap.className = "teams";
@@ -134,7 +131,8 @@ function render(data) {
       const monsDiv = document.createElement("div");
       monsDiv.className = "mons";
 
-      for (const mon of (info?.team || [])) {
+      for (const monRaw of (info?.team || [])) {
+        const mon = cleanMon(monRaw);
         const span = document.createElement("span");
         span.className = "mon";
         span.textContent = mon;
@@ -159,25 +157,27 @@ function applyFilters() {
 async function main() {
   try {
     statusEl.textContent = "Loading…";
+
     // cache-buster so GitHub Pages never serves stale JSON
     const url = `test.json?cb=${Date.now()}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error(`Failed to load test.json (${res.status})`);
+
     allData = await res.json();
 
-    populateThreadDropdown(allData);
+    populateTournamentDropdown(allData);
     applyFilters();
   } catch (e) {
     statusEl.textContent = `Error: ${e.message}`;
   }
 }
 
-threadSelect.addEventListener("change", applyFilters);
+tournamentSelect.addEventListener("change", applyFilters);
 playerInput.addEventListener("input", applyFilters);
 pokemonInput.addEventListener("input", applyFilters);
 
 clearBtn.addEventListener("click", () => {
-  threadSelect.value = "__all__";
+  tournamentSelect.value = "__all__";
   playerInput.value = "";
   pokemonInput.value = "";
   applyFilters();
