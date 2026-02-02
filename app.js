@@ -119,41 +119,59 @@ function render(data) {
     const teamsWrap = document.createElement("div");
     teamsWrap.className = "teams";
 
-    const teams = item.teams || {};
-    for (const [pid, info] of Object.entries(teams)) {
-      const teamDiv = document.createElement("div");
-      teamDiv.className = "team";
+  const teams = item.teams || {};
+const playerQuery = norm(playerInput.value);
 
-      const name = document.createElement("div");
-      name.className = "teamName";
-      name.textContent = info?.name ? info.name : pid;
+// Start with both teams
+let entries = Object.entries(teams);
 
-      const monsDiv = document.createElement("div");
-      monsDiv.className = "mons";
+// If player search is active, only show the matching player's team(s)
+if (playerQuery) {
+  entries = entries.filter(([pid, info]) => norm(info?.name).includes(playerQuery));
+}
 
-      for (const monRaw of (info?.team || [])) {
-        const mon = cleanMon(monRaw);
-        const span = document.createElement("span");
-        span.className = "mon";
-        // build a showdown-style filename
-        let key = mon.toLowerCase()
-          .replace(/[^a-z0-9\- ]/g, "")   // strip commas and punctuation
-          .replace(/ /g, "-");            // spaces → dashes
+// Fallback: if no match (should be rare), show both teams
+if (entries.length === 0) entries = Object.entries(teams);
 
-      const img = document.createElement("img");
-      img.src = `https://play.pokemonshowdown.com/sprites/ani/${key}.gif`;
-      img.alt = mon;
-      img.className = "monImg";         // we will style it
+for (const [pid, info] of entries) {
+  const teamDiv = document.createElement("div");
+  teamDiv.className = "team";
 
-      teamDiv.appendChild(img);
+  const name = document.createElement("div");
+  name.className = "teamName";
+  name.textContent = info?.name ? info.name : pid;
 
-        monsDiv.appendChild(span);
-      }
+  const monsDiv = document.createElement("div");
+  monsDiv.className = "mons";
 
-      teamDiv.appendChild(name);
-      teamDiv.appendChild(monsDiv);
-      teamsWrap.appendChild(teamDiv);
-    }
+  for (const monRaw of (info?.team || [])) {
+    const mon = cleanMon(monRaw);
+
+    // showdown-style filename
+    let key = mon.toLowerCase()
+      .replace(/[^a-z0-9\- ]/g, "")  // strip punctuation
+      .replace(/ /g, "-");           // spaces → dashes
+
+    const img = document.createElement("img");
+    img.src = `https://play.pokemonshowdown.com/sprites/ani/${key}.gif`;
+    img.alt = mon;
+    img.title = mon;                // hover shows name
+    img.className = "monImg";
+
+    // fallback to static sprite if ani gif doesn't exist
+    img.onerror = () => {
+      img.onerror = null;
+      img.src = `https://play.pokemonshowdown.com/sprites/xyani/${key}.gif`;
+    };
+
+    monsDiv.appendChild(img);
+  }
+
+  teamDiv.appendChild(name);
+  teamDiv.appendChild(monsDiv);
+  teamsWrap.appendChild(teamDiv);
+}
+
 
     card.appendChild(teamsWrap);
     resultsEl.appendChild(card);
