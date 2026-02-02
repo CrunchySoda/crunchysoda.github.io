@@ -135,7 +135,18 @@ function render(data) {
         const mon = cleanMon(monRaw);
         const span = document.createElement("span");
         span.className = "mon";
-        span.textContent = mon;
+        // build a showdown-style filename
+        let key = mon.toLowerCase()
+          .replace(/[^a-z0-9\- ]/g, "")   // strip commas and punctuation
+          .replace(/ /g, "-");            // spaces → dashes
+
+      const img = document.createElement("img");
+      img.src = `https://play.pokemonshowdown.com/sprites/ani/${key}.gif`;
+      img.alt = mon;
+      img.className = "monImg";         // we will style it
+
+      teamDiv.appendChild(img);
+
         monsDiv.appendChild(span);
       }
 
