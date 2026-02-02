@@ -1,47 +1,42 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" href="./favicon.png" />
-		<meta name="viewport" content="width=device-width" />
-		
-		<link href="./internal/immutable/assets/2.8c1c24f1.css" rel="stylesheet">
-		<link rel="modulepreload" href="./internal/immutable/entry/start.fbb1f787.js">
-		<link rel="modulepreload" href="./internal/immutable/chunks/scheduler.8746962a.js">
-		<link rel="modulepreload" href="./internal/immutable/chunks/singletons.d3e1aa8f.js">
-		<link rel="modulepreload" href="./internal/immutable/entry/app.2f8c1ae5.js">
-		<link rel="modulepreload" href="./internal/immutable/chunks/index.914b573a.js">
-		<link rel="modulepreload" href="./internal/immutable/nodes/0.5be5483e.js">
-		<link rel="modulepreload" href="./internal/immutable/nodes/2.97efb2c1.js"><title>Potatochan Scouter</title><!-- HEAD_svelte-ovzvm_START --><meta charset="UTF-8" class="svelte-brtn5w"><meta http-equiv="X-UA-Compatible" content="IE=edge" class="svelte-brtn5w"><meta name="viewport" content="width=device-width, initial-scale=1.0" class="svelte-brtn5w"><link rel="preconnect" href="https://fonts.googleapis.com" class="svelte-brtn5w"><link rel="preconnect" href="https://fonts.gstatic.com" class="svelte-brtn5w"><link href="https://fonts.googleapis.com/css2?family=Mooli&display=swap" rel="stylesheet" class="svelte-brtn5w"><!-- HEAD_svelte-ovzvm_END -->
-	</head>
-	<body data-sveltekit-preload-data="hover">
-		<div style="display: contents">    <header class="header svelte-brtn5w"><div class="search svelte-brtn5w"><h1 class="svelte-brtn5w" data-svelte-h="svelte-1r9prsx">Player:</h1> <input class="svelte-brtn5w" value=""></div> <div class="search svelte-brtn5w"><h1 class="svelte-brtn5w" data-svelte-h="svelte-3k2cax">Pokemon:</h1> <input class="svelte-brtn5w" value=""></div></header>  <span class="svelte-brtn5w" data-svelte-h="svelte-1e3c296">LOADING</span>  
-			
-			<script>
-				{
-					__sveltekit_17xem2l = {
-						assets: "/Potatochan789",
-						base: new URL(".", location).pathname.slice(0, -1),
-						env: {}
-					};
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Scouter</title>
+  <link rel="icon" href="./favicon.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1>Scouter</h1>
 
-					const element = document.currentScript.parentElement;
+    <section class="controls">
+      <div class="control">
+        <label for="threadFilter">Thread</label>
+        <select id="threadFilter">
+          <option value="__all__">All threads</option>
+        </select>
+      </div>
 
-					const data = [null,null];
+      <div class="control">
+        <label for="playerFilter">Player</label>
+        <input id="playerFilter" placeholder="e.g. CrunchySoda" />
+      </div>
 
-					Promise.all([
-						import("./internal/immutable/entry/start.fbb1f787.js"),
-						import("./internal/immutable/entry/app.2f8c1ae5.js")
-					]).then(([kit, app]) => {
-						kit.start(app, element, {
-							node_ids: [0, 2],
-							data,
-							form: null,
-							error: null
-						});
-					});
-				}
-			</script>
-		</div>
-	</body>
+      <div class="control">
+        <label for="pokemonFilter">Pokémon</label>
+        <input id="pokemonFilter" placeholder="e.g. Mesprit" />
+      </div>
+
+      <button id="clearBtn" type="button">Clear</button>
+    </section>
+
+    <p id="status" class="status">Loading…</p>
+
+    <section id="results" class="results"></section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
 </html>
