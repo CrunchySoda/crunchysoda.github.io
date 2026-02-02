@@ -1,0 +1,39 @@
+:root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+body { margin: 0; background: #0b0b0f; color: #f3f3f6; }
+.wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+h1 { margin: 0 0 16px; font-size: 28px; }
+
+.controls {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: end;
+  padding: 12px; background: #151522; border-radius: 10px;
+}
+.control { display: flex; flex-direction: column; gap: 6px; }
+label { font-size: 12px; opacity: 0.85; }
+input, select {
+  background: #0f0f18; color: #f3f3f6;
+  border: 1px solid #2a2a3a; border-radius: 8px;
+  padding: 10px 10px; min-width: 220px;
+}
+button {
+  background: #2b6cff; color: white; border: 0;
+  border-radius: 8px; padding: 10px 14px; cursor: pointer;
+}
+button:hover { filter: brightness(1.05); }
+
+.status { margin: 14px 2px; opacity: 0.85; }
+
+.results { display: grid; gap: 12px; margin-top: 8px; }
+.card {
+  background: #151522; border: 1px solid #2a2a3a; border-radius: 10px;
+  padding: 12px;
+}
+.cardTop { display:flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.card a { color: #8ab4ff; text-decoration: none; }
+.card a:hover { text-decoration: underline; }
+
+.teams { display: grid; gap: 10px; margin-top: 10px; }
+.team { background:#0f0f18; border:1px solid #2a2a3a; border-radius: 10px; padding: 10px; }
+.teamName { font-weight: 700; margin-bottom: 6px; }
+.mons { display:flex; flex-wrap: wrap; gap: 6px; }
+.mon { background:#1f1f2c; border:1px solid #2a2a3a; border-radius:999px; padding: 4px 10px; font-size: 12px; }
+small { opacity: 0.8; }
