@@ -148,9 +148,19 @@ for (const [pid, info] of entries) {
     const mon = cleanMon(monRaw);
 
     // showdown-style filename
-    let key = mon.toLowerCase()
-      .replace(/[^a-z0-9\- ]/g, "")  // strip punctuation
-      .replace(/ /g, "-");           // spaces → dashes
+let key = mon.toLowerCase()
+  .replace(/[^a-z0-9\- ]/g, "")
+  .replace(/ /g, "-");
+
+// normalize common showdown form names
+key = key
+  .replace("basculin-blue-striped", "basculin-bluestriped")
+  .replace("basculin-white-striped", "basculin-whitestriped")
+  .replace("oricorio-pau", "oricorio-pau")
+  .replace("oricorio-pompom", "oricorio-pompom")
+  .replace("oricorio-sensu", "oricorio-sensu")
+  .replace("oricorio-baile", "oricorio-baile");
+
 
     const img = document.createElement("img");
     img.src = `https://play.pokemonshowdown.com/sprites/ani/${key}.gif`;
