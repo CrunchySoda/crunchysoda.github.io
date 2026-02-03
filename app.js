@@ -74,6 +74,21 @@ function monToShowdownKey(mon) {
     .replace("oricorio-pompom", "oricorio-pompom")
     .replace("oricorio-sensu", "oricorio-sensu")
     .replace("oricorio-baile", "oricorio-baile");
+    // Paradox mons are often concatenated in PS sprite filenames
+  key = key
+    .replace("brute-bonnet", "brutebonnet")
+    .replace("scream-tail", "screamtail")
+    .replace("flutter-mane", "fluttermane")
+    .replace("slither-wing", "slitherwing")
+    .replace("sandy-shocks", "sandyshocks")
+    .replace("roaring-moon", "roaringmoon")
+    .replace("iron-treads", "irontreads")
+    .replace("iron-bundle", "ironbundle")
+    .replace("iron-hands", "ironhands")
+    .replace("iron-jugulis", "ironjugulis")
+    .replace("iron-moth", "ironmoth")
+    .replace("iron-thorns", "ironthorns")
+    .replace("iron-valiant", "ironvaliant");
 
   return key;
 }
