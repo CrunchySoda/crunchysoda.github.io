@@ -47,8 +47,7 @@ button:hover { filter: brightness(1.05); }
 }
 
 /* Sprite image: never stretch */
-.monSprite img,
-.monImg {
+.monSprite img {
   width: auto;
   height: auto;
   max-width: 100%;
