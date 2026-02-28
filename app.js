@@ -1,5 +1,3 @@
-// app.js (tidier layout + whole card clickable + better sprite fallback)
-
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
 
@@ -10,88 +8,34 @@ const clearBtn = document.getElementById("clearBtn");
 
 const statsPanel = document.getElementById("statsPanel");
 const statsToggleBtn = document.getElementById("statsToggleBtn");
-
-let allData = [];
 let showStats = false;
 
+let allData = [];
+
+/* -------------------- helpers -------------------- */
 function norm(s) {
   return (s ?? "").toString().trim().toLowerCase();
 }
 
+// Showdown "toID" style: remove ALL non-alnum, no hyphens.
+// This is the key fix for Brute Bonnet + most formes.
+function toId(s) {
+  return (s ?? "")
+    .toString()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
 function cleanMon(mon) {
+  // "Froslass, F" -> "Froslass"
   return (mon ?? "").toString().split(",")[0].trim();
 }
 
-// --------------------
-// Sprites (better fallbacks)
-// --------------------
-function showdownKeyFromMon(mon) {
-  // normalize to showdown-ish key
-  let key = (mon ?? "")
-    .toString()
-    .toLowerCase()
-    .replace(/['’\.]/g, "")
-    .replace(/[^a-z0-9\- ]/g, "")
-    .replace(/[\s\-]+/g, "");
-
-  // targeted fixes (add more as you see broken ones)
-  const fixes = {
-    // Basculin stripes
-    basculinbluestriped: "basculinbluestriped",
-    basculinwhitestriped: "basculinwhitestriped",
-
-    // Hisui
-    sneaselhisui: "sneaselhisui",
-    samurotthisui: "samurotthisui",
-
-    // Oricorio
-    oricoriopau: "oricoriopau",
-    oricoriopompom: "oricoriopompom",
-    oricoriosensu: "oricoriosensu",
-    oricoriobaile: "oricoriobaile",
-
-    // Common “-Alola”
-    exeggutoralola: "exeggutoralola",
-    raichualola: "raichualola",
-    marowakalola: "marowakalola",
-  };
-
-  return fixes[key] || key;
+function monToSpriteId(monRaw) {
+  const mon = cleanMon(monRaw);
+  return toId(mon);
 }
 
-function spriteUrlsFor(mon) {
-  const key = showdownKeyFromMon(mon);
-
-  // Try: modern static icons -> older icons -> dex sprite -> (last resort) gen5
-  return [
-    `https://play.pokemonshowdown.com/sprites/gen5/${key}.png`,
-    `https://play.pokemonshowdown.com/sprites/dex/${key}.png`,
-    `https://play.pokemonshowdown.com/sprites/gen4/${key}.png`,
-  ];
-}
-
-function makeMonSprite(mon) {
-  const img = document.createElement("img");
-  img.className = "monImg";
-  img.alt = mon;
-  img.title = mon;
-
-  const urls = spriteUrlsFor(mon);
-  let i = 0;
-  img.src = urls[i];
-
-  img.onerror = () => {
-    i++;
-    if (i < urls.length) img.src = urls[i];
-    else img.onerror = null;
-  };
-
-  return img;
-}
-
-// --------------------
-// Dropdown
-// --------------------
 function populateTournamentDropdown(data) {
   while (tournamentSelect.options.length > 1) tournamentSelect.remove(1);
 
@@ -112,9 +56,6 @@ function populateTournamentDropdown(data) {
   }
 }
 
-// --------------------
-// Filtering
-// --------------------
 function matchItem(item) {
   const tournamentValue = tournamentSelect.value;
   const p = norm(playerInput.value);
@@ -141,9 +82,13 @@ function matchItem(item) {
   return true;
 }
 
-// --------------------
-// Stats
-// --------------------
+/* -------------------- stats -------------------- */
+/**
+ * Pokémon stats (on filtered set):
+ * - uses: counts per team slot (mon on a team counts as 1)
+ * - gamesPresent: counts per match where mon appears at least once (either side)
+ * - wins/losses: per-use (if winner known)
+ */
 function computePokemonStats(matches) {
   const map = new Map();
   let totalUses = 0;
@@ -152,18 +97,26 @@ function computePokemonStats(matches) {
   for (const item of matches) {
     const winner = item.winner || null;
     const teams = item.teams || {};
+
     const presentThisGame = new Set();
 
     for (const [pid, info] of Object.entries(teams)) {
       const playerName = info?.name || pid;
-      const roster = (info?.team || []).map(cleanMon).filter(Boolean).slice(0, 6);
-      const rosterUniq = [...new Set(roster)];
 
+      const roster = (info?.team || [])
+        .map(cleanMon)
+        .filter(Boolean)
+        .slice(0, 6);
+
+      const rosterUniq = [...new Set(roster)];
       const isWinner = winner && norm(playerName) === norm(winner);
 
       for (const mon of rosterUniq) {
         totalUses++;
-        if (!map.has(mon)) map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
+
+        if (!map.has(mon)) {
+          map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
+        }
         const row = map.get(mon);
         row.uses++;
 
@@ -177,7 +130,9 @@ function computePokemonStats(matches) {
     }
 
     for (const mon of presentThisGame) {
-      if (!map.has(mon)) map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
+      if (!map.has(mon)) {
+        map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
+      }
       map.get(mon).gamesPresent++;
     }
   }
@@ -186,6 +141,7 @@ function computePokemonStats(matches) {
     const usageUsesPct = totalUses ? (r.uses / totalUses) * 100 : 0;
     const usageGamesPct = totalGames ? (r.gamesPresent / totalGames) * 100 : 0;
     const winrate = r.uses ? (r.wins / r.uses) * 100 : null;
+
     return { ...r, usageUsesPct, usageGamesPct, winrate };
   });
 
@@ -200,42 +156,39 @@ function computePokemonStats(matches) {
 }
 
 function renderStats(filtered) {
-  if (!statsPanel) return;
-
   const { rows, totalUses, totalGames } = computePokemonStats(filtered);
   const hasWinner = filtered.some(x => x.winner);
+
   const top = rows.slice(0, 50);
 
   const note = document.createElement("div");
-  note.style.margin = "6px 2px";
-  note.style.opacity = "0.85";
+  note.className = "statsNote";
   note.innerHTML = `
-    <div style="font-weight:700; margin-bottom:4px;">Pokémon stats (filtered)</div>
+    <div class="statsTitle">Pokémon stats (filtered)</div>
     <small>
-      Games: ${totalGames} · Uses: ${totalUses}
-      ${hasWinner ? "" : " · Winrate unavailable (missing winner field)"}
+      Games: ${totalGames} · Team-slot uses: ${totalUses}
+      ${hasWinner ? "" : " · Winrate unavailable (missing winner in test.json)"}
+      <br/>
+      Usage% (Uses) = uses / total team slots · Usage% (Games) = games where mon appears / total games
+      <br/>
+      Mirror matches are handled automatically (each side counts as one use; one win + one loss).
     </small>
   `;
 
   const table = document.createElement("table");
-  table.style.width = "100%";
-  table.style.borderCollapse = "collapse";
-  table.style.marginTop = "8px";
-
-  const thStyle =
-    "text-align:left; padding:6px; border-bottom:1px solid #2a2a3a; font-size:12px; opacity:0.9;";
-  const tdStyle = "padding:6px; border-bottom:1px solid #2a2a3a; font-size:12px;";
+  table.className = "statsTable";
 
   table.innerHTML = `
     <thead>
       <tr>
-        <th style="${thStyle}">Pokémon</th>
-        <th style="${thStyle}">Uses</th>
-        <th style="${thStyle}">Usage%</th>
-        <th style="${thStyle}">Games%</th>
-        <th style="${thStyle}">W</th>
-        <th style="${thStyle}">L</th>
-        <th style="${thStyle}">WR</th>
+        <th>Pokémon</th>
+        <th>Uses</th>
+        <th>Usage% (Uses)</th>
+        <th>Games</th>
+        <th>Usage% (Games)</th>
+        <th>Wins</th>
+        <th>Losses</th>
+        <th>Winrate</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -245,15 +198,15 @@ function renderStats(filtered) {
   for (const r of top) {
     const tr = document.createElement("tr");
     const wrText = r.winrate == null ? "—" : `${r.winrate.toFixed(1)}%`;
-
     tr.innerHTML = `
-      <td style="${tdStyle}">${r.mon}</td>
-      <td style="${tdStyle}">${r.uses}</td>
-      <td style="${tdStyle}">${r.usageUsesPct.toFixed(2)}%</td>
-      <td style="${tdStyle}">${r.usageGamesPct.toFixed(2)}%</td>
-      <td style="${tdStyle}">${r.wins}</td>
-      <td style="${tdStyle}">${r.losses}</td>
-      <td style="${tdStyle}">${wrText}</td>
+      <td>${r.mon}</td>
+      <td>${r.uses}</td>
+      <td>${r.usageUsesPct.toFixed(2)}%</td>
+      <td>${r.gamesPresent}</td>
+      <td>${r.usageGamesPct.toFixed(2)}%</td>
+      <td>${r.wins}</td>
+      <td>${r.losses}</td>
+      <td>${wrText}</td>
     `;
     tbody.appendChild(tr);
   }
@@ -263,33 +216,26 @@ function renderStats(filtered) {
   statsPanel.appendChild(table);
 }
 
-// --------------------
-// Rendering (tighter, clickable)
-// --------------------
-function monToShowdownKey(mon) {
-  // takes "Basculin-Blue-Striped" etc -> basculinbluestriped (icon naming)
-  return (mon ?? "")
-    .toString()
-    .split(",")[0]
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, ""); // remove hyphens/apostrophes/spaces
-}
+/* -------------------- rendering -------------------- */
+function spriteImg(monRaw) {
+  const mon = cleanMon(monRaw);
+  const id = monToSpriteId(mon);
 
-function spriteUrl(mon) {
-  const key = monToShowdownKey(mon);
+  const img = document.createElement("img");
+  img.className = "monImg";
+  img.alt = mon;
+  img.title = mon;
 
-  // 1) Gen5 dex icons (small, crisp, NOT 3D)
-  // This is the closest to the compact “team strip” look you posted.
-  return `https://play.pokemonshowdown.com/sprites/gen5/${key}.png`;
-}
+  // Primary: animated gen sprites (best coverage, not 3D models)
+  img.src = `https://play.pokemonshowdown.com/sprites/ani/${id}.gif`;
 
-function spriteFallbackUrl(mon) {
-  const key = monToShowdownKey(mon);
+  // Fallback: static dex sprite
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = `https://play.pokemonshowdown.com/sprites/dex/${id}.png`;
+  };
 
-  // 2) fallback: static gen5 spritesheet-style icon alt paths can differ by mon,
-  // so as a “good enough” fallback we use the full-size gen5 sprite.
-  return `https://play.pokemonshowdown.com/sprites/gen5/${key}.png`;
+  return img;
 }
 
 function render(data) {
@@ -302,79 +248,81 @@ function render(data) {
 
   statusEl.textContent = `Showing ${data.length} replays`;
 
+  const playerQuery = norm(playerInput.value);
+
   for (const item of data) {
     const card = document.createElement("div");
     card.className = "card";
 
-    const teams = item.teams || {};
-    const entries = Object.entries(teams);
+    // Compact header line (link + tournament)
+    const header = document.createElement("div");
+    header.className = "matchHeader";
 
-    // determine winner/loser by comparing displayed names to item.winner
+    const linkA = document.createElement("a");
+    linkA.href = item.link;
+    linkA.target = "_blank";
+    linkA.rel = "noreferrer";
+    linkA.textContent = item.link;
+
+    const meta = document.createElement("div");
+    meta.className = "matchMeta";
+    meta.textContent = item.tournament || "Unknown";
+
+    header.appendChild(linkA);
+    header.appendChild(meta);
+    card.appendChild(header);
+
+    const teamsWrap = document.createElement("div");
+    teamsWrap.className = "teamsCompact";
+
+    const teams = item.teams || {};
+    let entries = Object.entries(teams);
+
+    // If player filter active, only show that player's team rows
+    if (playerQuery) {
+      entries = entries.filter(([pid, info]) => norm(info?.name).includes(playerQuery));
+    }
+    if (entries.length === 0) entries = Object.entries(teams);
+
+    // Winner/loser coloring
     const winnerName = item.winner ? norm(item.winner) : null;
 
-    // If player filter is active, only show matching player rows (but keep match)
-    const playerQuery = norm(playerInput.value);
-    let shownEntries = entries;
+    for (const [pid, info] of entries) {
+      const nameText = (info?.name || pid).toString();
+      const isWinner = winnerName && norm(nameText) === winnerName;
 
-    if (playerQuery) {
-      shownEntries = entries.filter(([pid, info]) => norm(info?.name).includes(playerQuery));
-      if (shownEntries.length === 0) shownEntries = entries;
-    }
-
-    for (const [pid, info] of shownEntries) {
-      const row = document.createElement("div");
+      // Entire row clickable to replay
+      const row = document.createElement("a");
       row.className = "teamRow";
+      row.href = item.link;
+      row.target = "_blank";
+      row.rel = "noreferrer";
 
-      // click row -> open replay
-      row.addEventListener("click", () => {
-        window.open(item.link, "_blank", "noreferrer");
-      });
+      if (winnerName) row.classList.add(isWinner ? "winner" : "loser");
 
-      const playerName = info?.name || pid;
+      const name = document.createElement("div");
+      name.className = "teamRowName";
+      name.textContent = nameText;
 
-      if (winnerName) {
-        if (norm(playerName) === winnerName) row.classList.add("winner");
-        else row.classList.add("loser");
+      const mons = document.createElement("div");
+      mons.className = "teamRowMons";
+
+      for (const monRaw of (info?.team || []).slice(0, 6)) {
+        mons.appendChild(spriteImg(monRaw));
       }
 
-      const nameEl = document.createElement("div");
-      nameEl.className = "teamPlayer";
-      nameEl.textContent = playerName;
+      const right = document.createElement("div");
+      right.className = "teamRowRight";
+      right.textContent = item.tournament || "Unknown";
 
-      const monsDiv = document.createElement("div");
-      monsDiv.className = "mons";
+      row.appendChild(name);
+      row.appendChild(mons);
+      row.appendChild(right);
 
-      const roster = (info?.team || [])
-        .map(cleanMon)
-        .filter(Boolean)
-        .slice(0, 6);
-
-      for (const mon of roster) {
-        const img = document.createElement("img");
-        img.className = "monImg";
-        img.alt = mon;
-        img.title = mon;
-
-        img.src = spriteUrl(mon);
-        img.onerror = () => {
-          img.onerror = null;
-          img.src = spriteFallbackUrl(mon);
-        };
-
-        monsDiv.appendChild(img);
-      }
-
-      const badge = document.createElement("div");
-      badge.className = "badge";
-      badge.textContent = item.tournament || "Unknown";
-
-      row.appendChild(nameEl);
-      row.appendChild(monsDiv);
-      row.appendChild(badge);
-
-      card.appendChild(row);
+      teamsWrap.appendChild(row);
     }
 
+    card.appendChild(teamsWrap);
     resultsEl.appendChild(card);
   }
 }
@@ -383,11 +331,12 @@ function applyFilters() {
   const filtered = allData.filter(matchItem);
 
   if (showStats) renderStats(filtered);
-  else if (statsPanel) statsPanel.innerHTML = "";
+  else statsPanel.innerHTML = "";
 
   render(filtered);
 }
 
+/* -------------------- boot -------------------- */
 async function main() {
   try {
     statusEl.textContent = "Loading…";
@@ -399,31 +348,23 @@ async function main() {
     allData = await res.json();
 
     populateTournamentDropdown(allData);
-
-    // start hidden
-    if (statsPanel) statsPanel.classList.add("hidden");
-    if (statsToggleBtn) statsToggleBtn.textContent = "Show stats";
-
     applyFilters();
   } catch (e) {
     statusEl.textContent = `Error: ${e.message}`;
-    if (statsPanel) statsPanel.innerHTML = "";
+    statsPanel.innerHTML = "";
   }
 }
 
-// Events
 tournamentSelect.addEventListener("change", applyFilters);
 playerInput.addEventListener("input", applyFilters);
 pokemonInput.addEventListener("input", applyFilters);
 
-if (statsToggleBtn && statsPanel) {
-  statsToggleBtn.addEventListener("click", () => {
-    showStats = !showStats;
-    statsPanel.classList.toggle("hidden", !showStats);
-    statsToggleBtn.textContent = showStats ? "Hide stats" : "Show stats";
-    applyFilters();
-  });
-}
+statsToggleBtn.addEventListener("click", () => {
+  showStats = !showStats;
+  statsPanel.classList.toggle("hidden", !showStats);
+  statsToggleBtn.textContent = showStats ? "Hide stats" : "Show stats";
+  applyFilters();
+});
 
 clearBtn.addEventListener("click", () => {
   tournamentSelect.value = "__all__";
