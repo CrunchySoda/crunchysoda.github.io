@@ -1,11 +1,25 @@
-
 :root {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-body { margin: 0; background: #0b0b0f; color: #f3f3f6; }
-.wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
-h1 { margin: 0 0 16px; font-size: 28px; }
+body {
+  margin: 0;
+  background: #0b0b0f;
+  color: #f3f3f6;
+}
+
+.wrap {
+  max-width: 980px;
+  margin: 20px auto;
+  padding: 0 16px;
+}
+
+h1 {
+  margin: 0 0 14px;
+  font-size: 28px;
+}
+
+/* ---------------- Controls ---------------- */
 
 .controls {
   display: flex;
@@ -17,124 +31,158 @@ h1 { margin: 0 0 16px; font-size: 28px; }
   border-radius: 12px;
   border: 1px solid #2a2a3a;
 }
-.control { display: flex; flex-direction: column; gap: 6px; }
-label { font-size: 12px; opacity: 0.85; }
-input, select {
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+input,
+select {
   background: #0f0f18;
   color: #f3f3f6;
   border: 1px solid #2a2a3a;
   border-radius: 10px;
-  padding: 10px 10px;
+  padding: 9px 10px;
   min-width: 220px;
 }
+
 button {
   background: #2b6cff;
   color: white;
   border: 0;
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 9px 14px;
   cursor: pointer;
+  font-weight: 600;
 }
-button:hover { filter: brightness(1.05); }
 
-.status { margin: 14px 2px; opacity: 0.85; }
+button:hover {
+  filter: brightness(1.06);
+}
 
-a { color: #8ab4ff; text-decoration: none; }
-a:hover { text-decoration: underline; }
+.status {
+  margin: 12px 2px;
+  opacity: 0.85;
+}
 
-.results { display: grid; gap: 12px; margin-top: 8px; }
+/* ---------------- Results Layout ---------------- */
+
+.results {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+}
 
 .card {
   background: #151522;
   border: 1px solid #2a2a3a;
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 8px 10px;
 }
 
-/* Match header: link left, tournament right */
-.matchHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-.matchMeta {
-  opacity: 0.85;
-  font-size: 12px;
-}
+/* ---------------- Compact Team Rows ---------------- */
 
-/* Compact team rows */
 .teamsCompact {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
-/* Clickable row */
+/* Clickable team row */
 .teamRow {
   display: grid;
   grid-template-columns: 160px 1fr auto;
   align-items: center;
   gap: 10px;
-  padding: 10px 10px;
+
+  padding: 8px 10px;              /* tightened */
   background: #0f0f18;
   border: 1px solid #2a2a3a;
   border-radius: 12px;
   text-decoration: none;
-}
-.teamRow:hover {
-  border-color: #3a3a55;
-  filter: brightness(1.03);
+  transition: border-color 0.15s ease, transform 0.05s ease;
 }
 
-/* Winner/loser coloring */
+.teamRow:hover {
+  border-color: #3a3a55;
+  transform: translateY(-1px);
+}
+
+/* Player name */
 .teamRowName {
   font-weight: 800;
   letter-spacing: 0.2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 15px;
 }
-.teamRow.winner .teamRowName { color: #35d07f; }
-.teamRow.loser .teamRowName { color: #ff5a67; }
 
-/* Right-side small tournament label on each row (per your request) */
+/* Winner / loser colors */
+.teamRow.winner .teamRowName {
+  color: #35d07f;
+}
+
+.teamRow.loser .teamRowName {
+  color: #ff5a67;
+}
+
+/* Tournament label on right */
 .teamRowRight {
   font-size: 12px;
-  opacity: 0.75;
+  opacity: 0.65;
   white-space: nowrap;
+  font-weight: 600;
 }
 
-/* Sprite strip */
+/* ---------------- Sprite Strip ---------------- */
+
 .teamRowMons {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
 }
 
-/* Bigger than your current tiny ones, still compact */
+/* Slightly larger sprites (fix) */
 .monImg {
-  width: 44px;
-  height: 44px;
+  width: 52px;           /* increased from 44 */
+  height: 52px;
   object-fit: contain;
+
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
 }
 
-/* Stats */
+/* ---------------- Stats Panel ---------------- */
+
 .statsPanel {
   margin-top: 10px;
   padding: 12px;
   background: #151522;
   border: 1px solid #2a2a3a;
-  border-radius: 12px;
+  border-radius: 14px;
 }
-.hidden { display: none; }
 
-.statsTitle { font-weight: 800; margin-bottom: 6px; }
-.statsNote { margin: 0 2px; opacity: 0.9; }
+.hidden {
+  display: none;
+}
+
+.statsTitle {
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.statsNote {
+  margin: 0 2px;
+  opacity: 0.9;
+}
 
 .statsTable {
   width: 100%;
@@ -142,12 +190,20 @@ a:hover { text-decoration: underline; }
   margin-top: 10px;
   font-size: 12px;
 }
-.statsTable th, .statsTable td {
+
+.statsTable th,
+.statsTable td {
   padding: 8px;
   border-bottom: 1px solid #2a2a3a;
   text-align: left;
   vertical-align: top;
 }
-.statsTable th { opacity: 0.9; }
 
-small { opacity: 0.85; }
+.statsTable th {
+  opacity: 0.9;
+}
+
+small {
+  opacity: 0.85;
+}
+
