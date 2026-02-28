@@ -1,14 +1,9 @@
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
+const statsPanel = document.getElementById("statsPanel");
+const statsToggleBtn = document.getElementById("statsToggleBtn");
+let showStats = false;
 
-// Create a stats area above results if it doesn't exist
-let statsEl = document.getElementById("stats");
-if (!statsEl) {
-  statsEl = document.createElement("section");
-  statsEl.id = "stats";
-  statsEl.className = "stats";
-  resultsEl.parentElement.insertBefore(statsEl, resultsEl);
-}
 
 const tournamentSelect = document.getElementById("tournamentFilter");
 const playerInput = document.getElementById("playerFilter");
@@ -222,13 +217,13 @@ function renderStats(filtered) {
     tbody.appendChild(tr);
   }
 
-  statsEl.innerHTML = "";
-  statsEl.appendChild(note);
-  statsEl.appendChild(table);
+  statsPanel.innerHTML = "";
+  statsPanel.appendChild(note);
+  statsPanel.appendChild(table);
 }
 
 function render(data) {
-  resultsEl.innerHTML = "";
+  statsPanel.innerHTML = "";
 
   if (!data.length) {
     statusEl.textContent = "No matches found.";
@@ -322,7 +317,10 @@ function render(data) {
 
 function applyFilters() {
   const filtered = allData.filter(matchItem);
-  renderStats(filtered);
+
+  if (showStats) renderStats(filtered);
+  else statsPanel.innerHTML = "";
+
   render(filtered);
 }
 
@@ -340,13 +338,19 @@ async function main() {
     applyFilters();
   } catch (e) {
     statusEl.textContent = `Error: ${e.message}`;
-    statsEl.innerHTML = "";
+    statsPanel.innerHTML = "";
   }
 }
 
 tournamentSelect.addEventListener("change", applyFilters);
 playerInput.addEventListener("input", applyFilters);
 pokemonInput.addEventListener("input", applyFilters);
+statsToggleBtn.addEventListener("click", () => {
+  showStats = !showStats;
+  statsPanel.classList.toggle("hidden", !showStats);
+  statsToggleBtn.textContent = showStats ? "Hide stats" : "Show stats";
+  applyFilters(); // re-render to refresh stats based on current filters
+});
 
 clearBtn.addEventListener("click", () => {
   tournamentSelect.value = "__all__";
