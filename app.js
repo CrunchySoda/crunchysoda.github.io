@@ -266,6 +266,32 @@ function renderStats(filtered) {
 // --------------------
 // Rendering (tighter, clickable)
 // --------------------
+function monToShowdownKey(mon) {
+  // takes "Basculin-Blue-Striped" etc -> basculinbluestriped (icon naming)
+  return (mon ?? "")
+    .toString()
+    .split(",")[0]
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ""); // remove hyphens/apostrophes/spaces
+}
+
+function spriteUrl(mon) {
+  const key = monToShowdownKey(mon);
+
+  // 1) Gen5 dex icons (small, crisp, NOT 3D)
+  // This is the closest to the compact “team strip” look you posted.
+  return `https://play.pokemonshowdown.com/sprites/gen5/${key}.png`;
+}
+
+function spriteFallbackUrl(mon) {
+  const key = monToShowdownKey(mon);
+
+  // 2) fallback: static gen5 spritesheet-style icon alt paths can differ by mon,
+  // so as a “good enough” fallback we use the full-size gen5 sprite.
+  return `https://play.pokemonshowdown.com/sprites/gen5/${key}.png`;
+}
+
 function render(data) {
   resultsEl.innerHTML = "";
 
@@ -276,68 +302,80 @@ function render(data) {
 
   statusEl.textContent = `Showing ${data.length} replays`;
 
-  const playerQuery = norm(playerInput.value);
-
   for (const item of data) {
-    // Make the entire card clickable
-    const cardLink = document.createElement("a");
-    cardLink.className = "card cardLink";
-    cardLink.href = item.link;
-    cardLink.target = "_blank";
-    cardLink.rel = "noreferrer";
-
-    // Top row: tournament + winner (no source thread link)
-    const top = document.createElement("div");
-    top.className = "cardTop";
-
-    const left = document.createElement("div");
-    left.className = "cardTitle";
-    left.textContent = item.tournament || "Unknown";
-
-    const right = document.createElement("div");
-    const t = document.createElement("small");
-    t.textContent = item.winner ? `Winner: ${item.winner}` : "";
-    right.appendChild(t);
-
-    top.appendChild(left);
-    top.appendChild(right);
-    cardLink.appendChild(top);
-
-    const teamsWrap = document.createElement("div");
-    teamsWrap.className = "teams";
+    const card = document.createElement("div");
+    card.className = "card";
 
     const teams = item.teams || {};
-    let entries = Object.entries(teams);
+    const entries = Object.entries(teams);
 
-    // If player filter is active, show ONLY that player's team by default.
+    // determine winner/loser by comparing displayed names to item.winner
+    const winnerName = item.winner ? norm(item.winner) : null;
+
+    // If player filter is active, only show matching player rows (but keep match)
+    const playerQuery = norm(playerInput.value);
+    let shownEntries = entries;
+
     if (playerQuery) {
-      const matchesPlayer = entries.filter(([, info]) => norm(info?.name).includes(playerQuery));
-      if (matchesPlayer.length) entries = matchesPlayer;
+      shownEntries = entries.filter(([pid, info]) => norm(info?.name).includes(playerQuery));
+      if (shownEntries.length === 0) shownEntries = entries;
     }
 
-    for (const [, info] of entries) {
-      const teamDiv = document.createElement("div");
-      teamDiv.className = "team compactTeam";
+    for (const [pid, info] of shownEntries) {
+      const row = document.createElement("div");
+      row.className = "teamRow";
 
-      const name = document.createElement("div");
-      name.className = "teamName";
-      name.textContent = info?.name || "";
+      // click row -> open replay
+      row.addEventListener("click", () => {
+        window.open(item.link, "_blank", "noreferrer");
+      });
+
+      const playerName = info?.name || pid;
+
+      if (winnerName) {
+        if (norm(playerName) === winnerName) row.classList.add("winner");
+        else row.classList.add("loser");
+      }
+
+      const nameEl = document.createElement("div");
+      nameEl.className = "teamPlayer";
+      nameEl.textContent = playerName;
 
       const monsDiv = document.createElement("div");
       monsDiv.className = "mons";
 
-      for (const monRaw of (info?.team || [])) {
-        const mon = cleanMon(monRaw);
-        monsDiv.appendChild(makeMonSprite(mon));
+      const roster = (info?.team || [])
+        .map(cleanMon)
+        .filter(Boolean)
+        .slice(0, 6);
+
+      for (const mon of roster) {
+        const img = document.createElement("img");
+        img.className = "monImg";
+        img.alt = mon;
+        img.title = mon;
+
+        img.src = spriteUrl(mon);
+        img.onerror = () => {
+          img.onerror = null;
+          img.src = spriteFallbackUrl(mon);
+        };
+
+        monsDiv.appendChild(img);
       }
 
-      teamDiv.appendChild(name);
-      teamDiv.appendChild(monsDiv);
-      teamsWrap.appendChild(teamDiv);
+      const badge = document.createElement("div");
+      badge.className = "badge";
+      badge.textContent = item.tournament || "Unknown";
+
+      row.appendChild(nameEl);
+      row.appendChild(monsDiv);
+      row.appendChild(badge);
+
+      card.appendChild(row);
     }
 
-    cardLink.appendChild(teamsWrap);
-    resultsEl.appendChild(cardLink);
+    resultsEl.appendChild(card);
   }
 }
 
