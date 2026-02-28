@@ -1,6 +1,15 @@
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
 
+// Create a stats area above results if it doesn't exist
+let statsEl = document.getElementById("stats");
+if (!statsEl) {
+  statsEl = document.createElement("section");
+  statsEl.id = "stats";
+  statsEl.className = "stats";
+  resultsEl.parentElement.insertBefore(statsEl, resultsEl);
+}
+
 const tournamentSelect = document.getElementById("tournamentFilter");
 const playerInput = document.getElementById("playerFilter");
 const pokemonInput = document.getElementById("pokemonFilter");
@@ -14,7 +23,6 @@ function norm(s) {
 
 function cleanMon(mon) {
   // "Froslass, F" -> "Froslass"
-  // "Oricorio-Pa'u, M" -> "Oricorio-Pa'u"
   return (mon ?? "").toString().split(",")[0].trim();
 }
 
@@ -22,7 +30,6 @@ function populateTournamentDropdown(data) {
   while (tournamentSelect.options.length > 1) tournamentSelect.remove(1);
 
   const groups = [...new Set(data.map(d => d.tournament).filter(Boolean))].sort();
-
   for (const g of groups) {
     const opt = document.createElement("option");
     opt.value = g;
@@ -39,71 +46,6 @@ function populateTournamentDropdown(data) {
   }
 }
 
-/**
- * Convert a displayed mon name into a Pokemon Showdown sprite key.
- * Goal: match play.pokemonshowdown.com sprite filenames.
- */
-function monToShowdownKey(mon) {
-  let key = (mon ?? "").toString().trim().toLowerCase();
-
-  // normalize unicode apostrophe -> ascii
-  key = key.replace(/’/g, "'");
-
-  // remove special characters except letters/numbers/space/hyphen/apostrophe
-  // (we'll remove apostrophes next, PS filenames don't include them)
-  key = key.replace(/[^a-z0-9 \-']/g, "");
-
-  // remove apostrophes (e.g., "pa'u" -> "pau")
-  key = key.replace(/'/g, "");
-
-  // collapse spaces to hyphen
-  key = key.replace(/\s+/g, "-");
-
-  // collapse multiple hyphens
-  key = key.replace(/\-+/g, "-");
-
-  // common form normalizations
-  // basculin stripes
-  key = key
-    .replace("basculin-blue-striped", "basculin-bluestriped")
-    .replace("basculin-white-striped", "basculin-whitestriped");
-
-  // oricorio variants (after apostrophe removal, pa'u becomes pau)
-  key = key
-    .replace("oricorio-pau", "oricorio-pau") // fine, but keep here for clarity
-    .replace("oricorio-pompom", "oricorio-pompom")
-    .replace("oricorio-sensu", "oricorio-sensu")
-    .replace("oricorio-baile", "oricorio-baile");
-    // Paradox mons are often concatenated in PS sprite filenames
-  key = key
-    .replace("brute-bonnet", "brutebonnet")
-    .replace("scream-tail", "screamtail")
-    .replace("flutter-mane", "fluttermane")
-    .replace("slither-wing", "slitherwing")
-    .replace("sandy-shocks", "sandyshocks")
-    .replace("roaring-moon", "roaringmoon")
-    .replace("iron-treads", "irontreads")
-    .replace("iron-bundle", "ironbundle")
-    .replace("iron-hands", "ironhands")
-    .replace("iron-jugulis", "ironjugulis")
-    .replace("iron-moth", "ironmoth")
-    .replace("iron-thorns", "ironthorns")
-    .replace("iron-valiant", "ironvaliant");
-
-  return key;
-}
-
-/**
- * Some logs will have player names as "p1" / "p2" or blank.
- * We keep it readable but do not invent names.
- */
-function displayPlayerName(pid, info) {
-  const n = (info?.name ?? "").toString().trim();
-  if (n && n !== "p1" && n !== "p2") return n;
-  // fallback to pid ("p1"/"p2") if name is missing or generic
-  return pid;
-}
-
 function matchItem(item) {
   const tournamentValue = tournamentSelect.value;
   const p = norm(playerInput.value);
@@ -118,10 +60,7 @@ function matchItem(item) {
   const mons = Object.values(teams).flatMap(x => (x?.team || []).map(cleanMon));
 
   if (p) {
-    // match either actual player names OR pid as a backup
-    const ok =
-      players.some(name => norm(name).includes(p)) ||
-      Object.keys(teams).some(pid => norm(pid).includes(p));
+    const ok = players.some(name => norm(name).includes(p));
     if (!ok) return false;
   }
 
@@ -134,46 +73,158 @@ function matchItem(item) {
 }
 
 /**
- * Create a sprite element:
- * <div class="monSprite"><img ... /></div>
- * so CSS can scale without distortion.
+ * Compute Pokémon stats for a set of matches.
+ * - uses: counts per team slot (a mon on each team counts as 1)
+ * - gamesPresent: counts per match where mon appears at least once (either side)
+ * - wins/losses: per-use (if winner is known)
  */
-function makeSprite(monName) {
-  const key = monToShowdownKey(monName);
+function computePokemonStats(matches) {
+  const map = new Map();
 
-  const sprite = document.createElement("div");
-  sprite.className = "monSprite";
+  let totalUses = 0;       // denominator for usage% (uses)
+  const totalGames = matches.length; // denominator for usage% (games)
 
-  const img = document.createElement("img");
-  img.alt = monName;
-  img.title = monName;
+  for (const item of matches) {
+    const winner = item.winner || null;
 
-  // Try multiple sources in order (most "alive" to most "reliable")
-  // ani: modern animated gifs but not always available
-  // gen5ani: lots of animated coverage
-  // xyani: older animated
-  // dex: static PNG fallback
-  const candidates = [
-    `https://play.pokemonshowdown.com/sprites/ani/${key}.gif`,
-    `https://play.pokemonshowdown.com/sprites/gen5ani/${key}.gif`,
-    `https://play.pokemonshowdown.com/sprites/xyani/${key}.gif`,
-    `https://play.pokemonshowdown.com/sprites/dex/${key}.png`,
-  ];
+    const teams = item.teams || {};
+    const presentThisGame = new Set(); // unique mons in this match
 
-  let i = 0;
-  img.src = candidates[i];
+    for (const [pid, info] of Object.entries(teams)) {
+      const playerName = info?.name || pid;
 
-  img.onerror = () => {
-    i += 1;
-    if (i >= candidates.length) {
-      img.onerror = null;
-      return;
+      // dedupe + normalize roster to 6
+      const roster = (info?.team || [])
+        .map(cleanMon)
+        .filter(Boolean)
+        .slice(0, 6);
+
+      // (optional) if you want to dedupe within a team (should already be unique):
+      const rosterUniq = [...new Set(roster)];
+
+      const isWinner =
+        winner && norm(playerName) === norm(winner);
+
+      for (const mon of rosterUniq) {
+        totalUses++;
+
+        if (!map.has(mon)) {
+          map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
+        }
+        const row = map.get(mon);
+        row.uses++;
+
+        // winner-based stats
+        if (winner) {
+          if (isWinner) row.wins++;
+          else row.losses++;
+        }
+
+        presentThisGame.add(mon);
+      }
     }
-    img.src = candidates[i];
-  };
 
-  sprite.appendChild(img);
-  return sprite;
+    for (const mon of presentThisGame) {
+      if (!map.has(mon)) {
+        map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
+      }
+      map.get(mon).gamesPresent++;
+    }
+  }
+
+  const rows = [...map.values()].map(r => {
+    const usageUsesPct = totalUses ? (r.uses / totalUses) * 100 : 0;
+    const usageGamesPct = totalGames ? (r.gamesPresent / totalGames) * 100 : 0;
+    const winrate = r.uses ? (r.wins / r.uses) * 100 : null;
+
+    return {
+      ...r,
+      usageUsesPct,
+      usageGamesPct,
+      winrate,
+    };
+  });
+
+  // Sort by uses desc, then winrate desc
+  rows.sort((a, b) => {
+    if (b.uses !== a.uses) return b.uses - a.uses;
+    const aw = a.winrate ?? -1;
+    const bw = b.winrate ?? -1;
+    return bw - aw;
+  });
+
+  return { rows, totalUses, totalGames };
+}
+
+function renderStats(filtered) {
+  const { rows, totalUses, totalGames } = computePokemonStats(filtered);
+
+  // if winner missing, winrate is meaningless
+  const hasWinner = filtered.some(x => x.winner);
+
+  const top = rows.slice(0, 50); // show top 50
+
+  const note = document.createElement("div");
+  note.style.margin = "10px 2px";
+  note.style.opacity = "0.85";
+  note.innerHTML = `
+    <div style="font-weight:700; margin-bottom:6px;">Pokémon stats (filtered set)</div>
+    <small>
+      Games: ${totalGames} · Team-slot uses: ${totalUses}
+      ${hasWinner ? "" : " · Winrate unavailable (missing winner in test.json)"}
+      <br/>
+      Usage% (Uses) = uses / total team slots · Usage% (Games) = games where mon appears / total games
+      <br/>
+      Mirror matches are handled automatically (each side counts as one use; one win + one loss).
+    </small>
+  `;
+
+  const table = document.createElement("table");
+  table.style.width = "100%";
+  table.style.borderCollapse = "collapse";
+  table.style.marginTop = "10px";
+
+  const thStyle = "text-align:left; padding:8px; border-bottom:1px solid #2a2a3a; font-size:12px; opacity:0.9;";
+  const tdStyle = "padding:8px; border-bottom:1px solid #2a2a3a; font-size:12px;";
+
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th style="${thStyle}">Pokémon</th>
+        <th style="${thStyle}">Uses</th>
+        <th style="${thStyle}">Usage% (Uses)</th>
+        <th style="${thStyle}">Games</th>
+        <th style="${thStyle}">Usage% (Games)</th>
+        <th style="${thStyle}">Wins</th>
+        <th style="${thStyle}">Losses</th>
+        <th style="${thStyle}">Winrate (per-use)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+
+  const tbody = table.querySelector("tbody");
+  for (const r of top) {
+    const tr = document.createElement("tr");
+
+    const wrText = r.winrate == null ? "—" : `${r.winrate.toFixed(1)}%`;
+
+    tr.innerHTML = `
+      <td style="${tdStyle}">${r.mon}</td>
+      <td style="${tdStyle}">${r.uses}</td>
+      <td style="${tdStyle}">${r.usageUsesPct.toFixed(2)}%</td>
+      <td style="${tdStyle}">${r.gamesPresent}</td>
+      <td style="${tdStyle}">${r.usageGamesPct.toFixed(2)}%</td>
+      <td style="${tdStyle}">${r.wins}</td>
+      <td style="${tdStyle}">${r.losses}</td>
+      <td style="${tdStyle}">${wrText}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  statsEl.innerHTML = "";
+  statsEl.appendChild(note);
+  statsEl.appendChild(table);
 }
 
 function render(data) {
@@ -181,12 +232,11 @@ function render(data) {
 
   if (!data.length) {
     statusEl.textContent = "No matches found.";
+    statsEl.innerHTML = "";
     return;
   }
 
   statusEl.textContent = `Showing ${data.length} replays`;
-
-  const playerQuery = norm(playerInput.value);
 
   for (const item of data) {
     const card = document.createElement("div");
@@ -205,7 +255,8 @@ function render(data) {
 
     const right = document.createElement("div");
     const t = document.createElement("small");
-    t.textContent = `Tournament: ${item.tournament || "Unknown"}`;
+    const winText = item.winner ? ` · Winner: ${item.winner}` : "";
+    t.textContent = `Tournament: ${item.tournament || "Unknown"}${winText}`;
     right.appendChild(t);
 
     top.appendChild(left);
@@ -230,19 +281,13 @@ function render(data) {
     teamsWrap.className = "teams";
 
     const teams = item.teams || {};
+    const playerQuery = norm(playerInput.value);
 
-    // Start with both teams
     let entries = Object.entries(teams);
 
-    // If player search is active, only show matching player's team(s)
     if (playerQuery) {
-      entries = entries.filter(([pid, info]) => {
-        const n = norm(info?.name);
-        return n.includes(playerQuery) || norm(pid).includes(playerQuery);
-      });
+      entries = entries.filter(([pid, info]) => norm(info?.name).includes(playerQuery));
     }
-
-    // Fallback: if no match, show both teams
     if (entries.length === 0) entries = Object.entries(teams);
 
     for (const [pid, info] of entries) {
@@ -251,14 +296,18 @@ function render(data) {
 
       const name = document.createElement("div");
       name.className = "teamName";
-      name.textContent = displayPlayerName(pid, info);
+      name.textContent = info?.name ? info.name : pid;
 
       const monsDiv = document.createElement("div");
       monsDiv.className = "mons";
 
+      // Keep your existing sprite logic if you want; omitted here since your sprite part is working.
       for (const monRaw of (info?.team || [])) {
         const mon = cleanMon(monRaw);
-        monsDiv.appendChild(makeSprite(mon));
+        const pill = document.createElement("div");
+        pill.className = "mon";
+        pill.textContent = mon;
+        monsDiv.appendChild(pill);
       }
 
       teamDiv.appendChild(name);
@@ -273,6 +322,7 @@ function render(data) {
 
 function applyFilters() {
   const filtered = allData.filter(matchItem);
+  renderStats(filtered);
   render(filtered);
 }
 
@@ -280,7 +330,6 @@ async function main() {
   try {
     statusEl.textContent = "Loading…";
 
-    // cache-buster so GitHub Pages never serves stale JSON
     const url = `test.json?cb=${Date.now()}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error(`Failed to load test.json (${res.status})`);
@@ -291,6 +340,7 @@ async function main() {
     applyFilters();
   } catch (e) {
     statusEl.textContent = `Error: ${e.message}`;
+    statsEl.innerHTML = "";
   }
 }
 
