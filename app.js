@@ -50,6 +50,31 @@ function normalizeMonName(mon) {
 
 function monToSpriteId(monRaw) {
   const mon = normalizeMonName(monRaw);
+
+  // Explicit overrides for common ZU formes that are frequently mismatched
+  const OVERRIDE = {
+    "basculin-blue-striped": "basculinbluestriped",
+    "basculin-white-striped": "basculinwhitestriped",
+
+    "sneasel-hisui": "sneaselhisui",
+    "exeggutor-alola": "exeggutoralola",
+
+    "rotom-wash": "rotomwash",
+    "rotom-mow": "rotommow",
+    "rotom-heat": "rotomheat",
+    "rotom-frost": "rotomfrost",
+    "rotom-fan": "rotomfan",
+
+    "oricorio-baile": "oricoriobaile",
+    "oricorio-pompom": "oricoriopompom",
+    "oricorio-pau": "oricoriopau",
+    "oricorio-sensu": "oricoriosensu",
+  };
+
+  const k = mon.toLowerCase().replace(/’/g, "'").trim();
+  if (OVERRIDE[k]) return OVERRIDE[k];
+
+  // Default to showdown toID-style
   return toId(mon);
 }
 
@@ -246,15 +271,20 @@ function spriteImg(monRaw) {
   img.alt = mon;
   img.title = mon;
 
+  // base species fallback: "Basculin-Blue-Striped" -> "Basculin"
+  const baseName = mon.includes("-") ? mon.split("-")[0] : mon;
+  const baseId = toId(baseName);
+
   const urls = [
-    // best: classic pixel (static)
     `https://play.pokemonshowdown.com/sprites/gen5/${id}.png`,
-    // sometimes gen5 misses — try gen5 animated
     `https://play.pokemonshowdown.com/sprites/gen5ani/${id}.gif`,
-    // try generic animated
     `https://play.pokemonshowdown.com/sprites/ani/${id}.gif`,
-    // final fallback: dex art
     `https://play.pokemonshowdown.com/sprites/dex/${id}.png`,
+
+    // last-resort: at least show the base species if the forme filename differs/missing
+    `https://play.pokemonshowdown.com/sprites/gen5/${baseId}.png`,
+    `https://play.pokemonshowdown.com/sprites/gen5ani/${baseId}.gif`,
+    `https://play.pokemonshowdown.com/sprites/dex/${baseId}.png`,
   ];
 
   setSpriteWithFallback(img, urls);
