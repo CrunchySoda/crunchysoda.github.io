@@ -68,6 +68,29 @@ button:hover { filter: brightness(1.05); }
 .stats table { width: 100%; }
 .stats th, .stats td { vertical-align: top; }
 
+/* collapsible stats */
+.statsPanel {
+  margin-top: 10px;
+  padding: 10px;
+  background: #151522;
+  border: 1px solid #2a2a3a;
+  border-radius: 10px;
+}
+.hidden { display: none; }
 
+/* smaller sprites like PS usage pics */
+.mons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+}
+
+.monImg {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
 
 small { opacity: 0.8; }
