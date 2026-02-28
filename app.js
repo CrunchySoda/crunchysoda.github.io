@@ -17,8 +17,7 @@ function norm(s) {
   return (s ?? "").toString().trim().toLowerCase();
 }
 
-// Showdown "toID" style: remove ALL non-alnum, no hyphens.
-// This is the key fix for Brute Bonnet + most formes.
+// Showdown toID: remove ALL non-alnum (no hyphens/spaces/punct)
 function toId(s) {
   return (s ?? "")
     .toString()
@@ -31,8 +30,26 @@ function cleanMon(mon) {
   return (mon ?? "").toString().split(",")[0].trim();
 }
 
+/**
+ * Formes can be written a few different ways in logs.
+ * This helps normalize some common ones BEFORE toId.
+ */
+function normalizeMonName(mon) {
+  let s = cleanMon(mon);
+
+  // unify common punctuation variants
+  s = s.replace(/’/g, "'");
+
+  // normalize a few frequent format differences
+  // (these are safe even if not present)
+  s = s.replace(/^Basculin-Blue-Striped$/i, "Basculin-Blue-Striped");
+  s = s.replace(/^Basculin-White-Striped$/i, "Basculin-White-Striped");
+
+  return s;
+}
+
 function monToSpriteId(monRaw) {
-  const mon = cleanMon(monRaw);
+  const mon = normalizeMonName(monRaw);
   return toId(mon);
 }
 
@@ -83,12 +100,6 @@ function matchItem(item) {
 }
 
 /* -------------------- stats -------------------- */
-/**
- * Pokémon stats (on filtered set):
- * - uses: counts per team slot (mon on a team counts as 1)
- * - gamesPresent: counts per match where mon appears at least once (either side)
- * - wins/losses: per-use (if winner known)
- */
 function computePokemonStats(matches) {
   const map = new Map();
   let totalUses = 0;
@@ -97,7 +108,6 @@ function computePokemonStats(matches) {
   for (const item of matches) {
     const winner = item.winner || null;
     const teams = item.teams || {};
-
     const presentThisGame = new Set();
 
     for (const [pid, info] of Object.entries(teams)) {
@@ -141,7 +151,6 @@ function computePokemonStats(matches) {
     const usageUsesPct = totalUses ? (r.uses / totalUses) * 100 : 0;
     const usageGamesPct = totalGames ? (r.gamesPresent / totalGames) * 100 : 0;
     const winrate = r.uses ? (r.wins / r.uses) * 100 : null;
-
     return { ...r, usageUsesPct, usageGamesPct, winrate };
   });
 
@@ -169,15 +178,12 @@ function renderStats(filtered) {
       Games: ${totalGames} · Team-slot uses: ${totalUses}
       ${hasWinner ? "" : " · Winrate unavailable (missing winner in test.json)"}
       <br/>
-      Usage% (Uses) = uses / total team slots · Usage% (Games) = games where mon appears / total games
-      <br/>
       Mirror matches are handled automatically (each side counts as one use; one win + one loss).
     </small>
   `;
 
   const table = document.createElement("table");
   table.className = "statsTable";
-
   table.innerHTML = `
     <thead>
       <tr>
@@ -216,9 +222,23 @@ function renderStats(filtered) {
   statsPanel.appendChild(table);
 }
 
-/* -------------------- rendering -------------------- */
+/* -------------------- sprites (FIXED) -------------------- */
+/**
+ * We use classic pixel sprites FIRST (gen5) to avoid the “3D-ish” look and
+ * to improve forme coverage. Then we fall back to other sets.
+ */
+function setSpriteWithFallback(img, urls) {
+  let i = 0;
+  const tryNext = () => {
+    if (i >= urls.length) return;
+    img.src = urls[i++];
+  };
+  img.onerror = () => tryNext();
+  tryNext();
+}
+
 function spriteImg(monRaw) {
-  const mon = cleanMon(monRaw);
+  const mon = normalizeMonName(monRaw);
   const id = monToSpriteId(mon);
 
   const img = document.createElement("img");
@@ -226,18 +246,22 @@ function spriteImg(monRaw) {
   img.alt = mon;
   img.title = mon;
 
-  // Primary: animated gen sprites (best coverage, not 3D models)
-  img.src = `https://play.pokemonshowdown.com/sprites/ani/${id}.gif`;
+  const urls = [
+    // best: classic pixel (static)
+    `https://play.pokemonshowdown.com/sprites/gen5/${id}.png`,
+    // sometimes gen5 misses — try gen5 animated
+    `https://play.pokemonshowdown.com/sprites/gen5ani/${id}.gif`,
+    // try generic animated
+    `https://play.pokemonshowdown.com/sprites/ani/${id}.gif`,
+    // final fallback: dex art
+    `https://play.pokemonshowdown.com/sprites/dex/${id}.png`,
+  ];
 
-  // Fallback: static dex sprite
-  img.onerror = () => {
-    img.onerror = null;
-    img.src = `https://play.pokemonshowdown.com/sprites/dex/${id}.png`;
-  };
-
+  setSpriteWithFallback(img, urls);
   return img;
 }
 
+/* -------------------- rendering -------------------- */
 function render(data) {
   resultsEl.innerHTML = "";
 
@@ -254,37 +278,18 @@ function render(data) {
     const card = document.createElement("div");
     card.className = "card";
 
-    // Compact header line (link + tournament)
-    const header = document.createElement("div");
-    header.className = "matchHeader";
-
-    const linkA = document.createElement("a");
-    linkA.href = item.link;
-    linkA.target = "_blank";
-    linkA.rel = "noreferrer";
-    linkA.textContent = item.link;
-
-    const meta = document.createElement("div");
-    meta.className = "matchMeta";
-    meta.textContent = item.tournament || "Unknown";
-
-    header.appendChild(linkA);
-    header.appendChild(meta);
-    card.appendChild(header);
-
     const teamsWrap = document.createElement("div");
     teamsWrap.className = "teamsCompact";
 
     const teams = item.teams || {};
     let entries = Object.entries(teams);
 
-    // If player filter active, only show that player's team rows
+    // If player filter active, show only matching row(s)
     if (playerQuery) {
       entries = entries.filter(([pid, info]) => norm(info?.name).includes(playerQuery));
     }
     if (entries.length === 0) entries = Object.entries(teams);
 
-    // Winner/loser coloring
     const winnerName = item.winner ? norm(item.winner) : null;
 
     for (const [pid, info] of entries) {
@@ -298,6 +303,7 @@ function render(data) {
       row.target = "_blank";
       row.rel = "noreferrer";
 
+      // winner/loser coloring (only if winner exists)
       if (winnerName) row.classList.add(isWinner ? "winner" : "loser");
 
       const name = document.createElement("div");
@@ -346,7 +352,6 @@ async function main() {
     if (!res.ok) throw new Error(`Failed to load test.json (${res.status})`);
 
     allData = await res.json();
-
     populateTournamentDropdown(allData);
     applyFilters();
   } catch (e) {
