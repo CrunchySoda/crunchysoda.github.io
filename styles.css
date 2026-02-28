@@ -57,6 +57,17 @@ button:hover { filter: brightness(1.05); }
   image-rendering: -moz-crisp-edges;
 }
 
+.stats {
+  background: #151522;
+  border: 1px solid #2a2a3a;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+.stats table { width: 100%; }
+.stats th, .stats td { vertical-align: top; }
+
 
 
 small { opacity: 0.8; }
