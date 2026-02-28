@@ -1,4 +1,4 @@
-// app.js (full file) — copy/paste the whole thing
+// app.js (tidier layout + whole card clickable + better sprite fallback)
 
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
@@ -8,7 +8,6 @@ const playerInput = document.getElementById("playerFilter");
 const pokemonInput = document.getElementById("pokemonFilter");
 const clearBtn = document.getElementById("clearBtn");
 
-// Stats UI (must exist in HTML)
 const statsPanel = document.getElementById("statsPanel");
 const statsToggleBtn = document.getElementById("statsToggleBtn");
 
@@ -20,37 +19,41 @@ function norm(s) {
 }
 
 function cleanMon(mon) {
-  // "Froslass, F" -> "Froslass"
-  // "Oricorio-Pa'u, M" -> "Oricorio-Pa'u"
   return (mon ?? "").toString().split(",")[0].trim();
 }
 
-// --- Sprite helpers (static sprites by default, smaller + reliable) ---
+// --------------------
+// Sprites (better fallbacks)
+// --------------------
 function showdownKeyFromMon(mon) {
-  // Convert display name to showdown sprite key
-  // examples:
-  // "Brute Bonnet" -> "brutebonnet"
-  // "Basculin-Blue-Striped" -> "basculinbluestriped"
-  // "Sneasel-Hisui" -> "sneaselhisui"
-  // "Exeggutor-Alola" -> "exeggutoralola"
-
+  // normalize to showdown-ish key
   let key = (mon ?? "")
     .toString()
     .toLowerCase()
-    .replace(/['’\.]/g, "")      // remove apostrophes/dots
-    .replace(/[^a-z0-9\- ]/g, "")// strip weird chars
-    .replace(/[\s\-]+/g, "");    // remove spaces + hyphens
+    .replace(/['’\.]/g, "")
+    .replace(/[^a-z0-9\- ]/g, "")
+    .replace(/[\s\-]+/g, "");
 
-  // A few common special cases (add more if you see a broken one)
+  // targeted fixes (add more as you see broken ones)
   const fixes = {
-    // Oricorio forms
+    // Basculin stripes
+    basculinbluestriped: "basculinbluestriped",
+    basculinwhitestriped: "basculinwhitestriped",
+
+    // Hisui
+    sneaselhisui: "sneaselhisui",
+    samurotthisui: "samurotthisui",
+
+    // Oricorio
     oricoriopau: "oricoriopau",
     oricoriopompom: "oricoriopompom",
     oricoriosensu: "oricoriosensu",
     oricoriobaile: "oricoriobaile",
-    // Basculin stripes
-    basculinbluestriped: "basculinbluestriped",
-    basculinwhitestriped: "basculinwhitestriped",
+
+    // Common “-Alola”
+    exeggutoralola: "exeggutoralola",
+    raichualola: "raichualola",
+    marowakalola: "marowakalola",
   };
 
   return fixes[key] || key;
@@ -59,12 +62,11 @@ function showdownKeyFromMon(mon) {
 function spriteUrlsFor(mon) {
   const key = showdownKeyFromMon(mon);
 
-  // Static sprites are way more stable than GIFs
-  // Primary: gen5 icons (tiny, crisp)
-  // Fallback: dex sprites (larger png)
+  // Try: modern static icons -> older icons -> dex sprite -> (last resort) gen5
   return [
     `https://play.pokemonshowdown.com/sprites/gen5/${key}.png`,
     `https://play.pokemonshowdown.com/sprites/dex/${key}.png`,
+    `https://play.pokemonshowdown.com/sprites/gen4/${key}.png`,
   ];
 }
 
@@ -87,12 +89,13 @@ function makeMonSprite(mon) {
   return img;
 }
 
-// --- Dropdown ---
+// --------------------
+// Dropdown
+// --------------------
 function populateTournamentDropdown(data) {
   while (tournamentSelect.options.length > 1) tournamentSelect.remove(1);
 
   const groups = [...new Set(data.map(d => d.tournament).filter(Boolean))].sort();
-
   for (const g of groups) {
     const opt = document.createElement("option");
     opt.value = g;
@@ -109,7 +112,9 @@ function populateTournamentDropdown(data) {
   }
 }
 
-// --- Filtering ---
+// --------------------
+// Filtering
+// --------------------
 function matchItem(item) {
   const tournamentValue = tournamentSelect.value;
   const p = norm(playerInput.value);
@@ -136,13 +141,9 @@ function matchItem(item) {
   return true;
 }
 
-// --- Stats ---
-/**
- * Pokémon stats:
- * - uses: team-slot uses (each appearance on a team counts as 1)
- * - gamesPresent: matches where mon appears at least once (either side)
- * - wins/losses: per-use, based on winner field (mirror games count as 1 win + 1 loss)
- */
+// --------------------
+// Stats
+// --------------------
 function computePokemonStats(matches) {
   const map = new Map();
   let totalUses = 0;
@@ -155,20 +156,14 @@ function computePokemonStats(matches) {
 
     for (const [pid, info] of Object.entries(teams)) {
       const playerName = info?.name || pid;
-
-      const roster = (info?.team || [])
-        .map(cleanMon)
-        .filter(Boolean)
-        .slice(0, 6);
-
+      const roster = (info?.team || []).map(cleanMon).filter(Boolean).slice(0, 6);
       const rosterUniq = [...new Set(roster)];
+
       const isWinner = winner && norm(playerName) === norm(winner);
 
       for (const mon of rosterUniq) {
         totalUses++;
-        if (!map.has(mon)) {
-          map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
-        }
+        if (!map.has(mon)) map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
         const row = map.get(mon);
         row.uses++;
 
@@ -182,9 +177,7 @@ function computePokemonStats(matches) {
     }
 
     for (const mon of presentThisGame) {
-      if (!map.has(mon)) {
-        map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
-      }
+      if (!map.has(mon)) map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
       map.get(mon).gamesPresent++;
     }
   }
@@ -193,7 +186,6 @@ function computePokemonStats(matches) {
     const usageUsesPct = totalUses ? (r.uses / totalUses) * 100 : 0;
     const usageGamesPct = totalGames ? (r.gamesPresent / totalGames) * 100 : 0;
     const winrate = r.uses ? (r.wins / r.uses) * 100 : null;
-
     return { ...r, usageUsesPct, usageGamesPct, winrate };
   });
 
@@ -212,42 +204,38 @@ function renderStats(filtered) {
 
   const { rows, totalUses, totalGames } = computePokemonStats(filtered);
   const hasWinner = filtered.some(x => x.winner);
-
   const top = rows.slice(0, 50);
 
   const note = document.createElement("div");
-  note.style.margin = "10px 2px";
+  note.style.margin = "6px 2px";
   note.style.opacity = "0.85";
   note.innerHTML = `
-    <div style="font-weight:700; margin-bottom:6px;">Pokémon stats (filtered set)</div>
+    <div style="font-weight:700; margin-bottom:4px;">Pokémon stats (filtered)</div>
     <small>
-      Games: ${totalGames} · Team-slot uses: ${totalUses}
-      ${hasWinner ? "" : " · Winrate unavailable (missing winner in test.json)"}
-      <br/>
-      Usage% (Uses) = uses / total team slots · Usage% (Games) = games where mon appears / total games
+      Games: ${totalGames} · Uses: ${totalUses}
+      ${hasWinner ? "" : " · Winrate unavailable (missing winner field)"}
     </small>
   `;
 
   const table = document.createElement("table");
   table.style.width = "100%";
   table.style.borderCollapse = "collapse";
-  table.style.marginTop = "10px";
+  table.style.marginTop = "8px";
 
   const thStyle =
-    "text-align:left; padding:8px; border-bottom:1px solid #2a2a3a; font-size:12px; opacity:0.9;";
-  const tdStyle = "padding:8px; border-bottom:1px solid #2a2a3a; font-size:12px;";
+    "text-align:left; padding:6px; border-bottom:1px solid #2a2a3a; font-size:12px; opacity:0.9;";
+  const tdStyle = "padding:6px; border-bottom:1px solid #2a2a3a; font-size:12px;";
 
   table.innerHTML = `
     <thead>
       <tr>
         <th style="${thStyle}">Pokémon</th>
         <th style="${thStyle}">Uses</th>
-        <th style="${thStyle}">Usage% (Uses)</th>
-        <th style="${thStyle}">Games</th>
-        <th style="${thStyle}">Usage% (Games)</th>
-        <th style="${thStyle}">Wins</th>
-        <th style="${thStyle}">Losses</th>
-        <th style="${thStyle}">Winrate</th>
+        <th style="${thStyle}">Usage%</th>
+        <th style="${thStyle}">Games%</th>
+        <th style="${thStyle}">W</th>
+        <th style="${thStyle}">L</th>
+        <th style="${thStyle}">WR</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -262,7 +250,6 @@ function renderStats(filtered) {
       <td style="${tdStyle}">${r.mon}</td>
       <td style="${tdStyle}">${r.uses}</td>
       <td style="${tdStyle}">${r.usageUsesPct.toFixed(2)}%</td>
-      <td style="${tdStyle}">${r.gamesPresent}</td>
       <td style="${tdStyle}">${r.usageGamesPct.toFixed(2)}%</td>
       <td style="${tdStyle}">${r.wins}</td>
       <td style="${tdStyle}">${r.losses}</td>
@@ -276,7 +263,9 @@ function renderStats(filtered) {
   statsPanel.appendChild(table);
 }
 
-// --- Render results ---
+// --------------------
+// Rendering (tighter, clickable)
+// --------------------
 function render(data) {
   resultsEl.innerHTML = "";
 
@@ -287,74 +276,59 @@ function render(data) {
 
   statusEl.textContent = `Showing ${data.length} replays`;
 
-  for (const item of data) {
-    const card = document.createElement("div");
-    card.className = "card";
+  const playerQuery = norm(playerInput.value);
 
+  for (const item of data) {
+    // Make the entire card clickable
+    const cardLink = document.createElement("a");
+    cardLink.className = "card cardLink";
+    cardLink.href = item.link;
+    cardLink.target = "_blank";
+    cardLink.rel = "noreferrer";
+
+    // Top row: tournament + winner (no source thread link)
     const top = document.createElement("div");
     top.className = "cardTop";
 
     const left = document.createElement("div");
-    const a = document.createElement("a");
-    a.href = item.link;
-    a.target = "_blank";
-    a.rel = "noreferrer";
-    a.textContent = item.link;
-    left.appendChild(a);
+    left.className = "cardTitle";
+    left.textContent = item.tournament || "Unknown";
 
     const right = document.createElement("div");
     const t = document.createElement("small");
-    const winText = item.winner ? ` · Winner: ${item.winner}` : "";
-    t.textContent = `Tournament: ${item.tournament || "Unknown"}${winText}`;
+    t.textContent = item.winner ? `Winner: ${item.winner}` : "";
     right.appendChild(t);
 
     top.appendChild(left);
     top.appendChild(right);
-    card.appendChild(top);
-
-    if (item.thread_url) {
-      const threadLine = document.createElement("div");
-      threadLine.style.marginTop = "6px";
-
-      const threadA = document.createElement("a");
-      threadA.href = item.thread_url;
-      threadA.target = "_blank";
-      threadA.rel = "noreferrer";
-      threadA.textContent = "Source thread";
-
-      threadLine.appendChild(threadA);
-      card.appendChild(threadLine);
-    }
+    cardLink.appendChild(top);
 
     const teamsWrap = document.createElement("div");
     teamsWrap.className = "teams";
 
     const teams = item.teams || {};
-    const playerQuery = norm(playerInput.value);
-
     let entries = Object.entries(teams);
 
-    // If player filter is active, only show matching side(s)
+    // If player filter is active, show ONLY that player's team by default.
     if (playerQuery) {
-      entries = entries.filter(([pid, info]) => norm(info?.name).includes(playerQuery));
+      const matchesPlayer = entries.filter(([, info]) => norm(info?.name).includes(playerQuery));
+      if (matchesPlayer.length) entries = matchesPlayer;
     }
-    if (entries.length === 0) entries = Object.entries(teams);
 
-    for (const [pid, info] of entries) {
+    for (const [, info] of entries) {
       const teamDiv = document.createElement("div");
-      teamDiv.className = "team";
+      teamDiv.className = "team compactTeam";
 
       const name = document.createElement("div");
       name.className = "teamName";
-      name.textContent = info?.name ? info.name : pid;
+      name.textContent = info?.name || "";
 
       const monsDiv = document.createElement("div");
       monsDiv.className = "mons";
 
       for (const monRaw of (info?.team || [])) {
         const mon = cleanMon(monRaw);
-        const img = makeMonSprite(mon);
-        monsDiv.appendChild(img);
+        monsDiv.appendChild(makeMonSprite(mon));
       }
 
       teamDiv.appendChild(name);
@@ -362,8 +336,8 @@ function render(data) {
       teamsWrap.appendChild(teamDiv);
     }
 
-    card.appendChild(teamsWrap);
-    resultsEl.appendChild(card);
+    cardLink.appendChild(teamsWrap);
+    resultsEl.appendChild(cardLink);
   }
 }
 
@@ -380,7 +354,6 @@ async function main() {
   try {
     statusEl.textContent = "Loading…";
 
-    // cache-buster so GitHub Pages never serves stale JSON
     const url = `test.json?cb=${Date.now()}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error(`Failed to load test.json (${res.status})`);
@@ -389,7 +362,7 @@ async function main() {
 
     populateTournamentDropdown(allData);
 
-    // start hidden (button shows stats on demand)
+    // start hidden
     if (statsPanel) statsPanel.classList.add("hidden");
     if (statsToggleBtn) statsToggleBtn.textContent = "Show stats";
 
@@ -400,7 +373,7 @@ async function main() {
   }
 }
 
-// --- Events ---
+// Events
 tournamentSelect.addEventListener("change", applyFilters);
 playerInput.addEventListener("input", applyFilters);
 pokemonInput.addEventListener("input", applyFilters);
