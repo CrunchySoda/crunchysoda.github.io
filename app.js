@@ -68,17 +68,7 @@ function monToSpriteId(monRaw) {
 
   // Explicit overrides for common ZU formes that are frequently mismatched
   const OVERRIDE = {
-    "basculin-blue-striped": "basculinbluestriped",
-    "basculin-white-striped": "basculinwhitestriped",
 
-    "sneasel-hisui": "sneaselhisui",
-    "exeggutor-alola": "exeggutoralola",
-
-    "rotom-wash": "rotomwash",
-    "rotom-mow": "rotommow",
-    "rotom-heat": "rotomheat",
-    "rotom-frost": "rotomfrost",
-    "rotom-fan": "rotomfan",
 
     "oricorio-baile": "oricoriobaile",
     "oricorio-pompom": "oricoriopompom",
@@ -87,10 +77,16 @@ function monToSpriteId(monRaw) {
   };
 
   const k = mon.toLowerCase().replace(/’/g, "'").trim();
-  if (OVERRIDE[k]) return OVERRIDE[k];
 
-  // Default to showdown toID-style
-  return toId(mon);
+  if (OVERRIDE[k]) {
+    return OVERRIDE[k];
+  }
+
+  // Proper showdown sprite naming:
+  // keep hyphens for formes
+  return k
+    .replace(/[^a-z0-9\- ]/g, "")
+    .replace(/\s+/g, "-");
 }
 
 function populateTournamentDropdown(data) {
