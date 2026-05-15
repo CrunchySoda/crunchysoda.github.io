@@ -13,6 +13,21 @@ let showStats = false;
 let allData = [];
 
 /* -------------------- helpers -------------------- */
+function statMonName(mon) {
+  const clean = cleanMon(mon);
+
+  // Merge ONLY Basculin forms for stats
+  if (
+    clean === "Basculin" ||
+    clean === "Basculin-Blue-Striped" ||
+    clean === "Basculin-White-Striped"
+  ) {
+    return "Basculin";
+  }
+
+  return clean;
+}
+
 function norm(s) {
   return (s ?? "").toString().trim().toLowerCase();
 }
@@ -139,7 +154,7 @@ function computePokemonStats(matches) {
       const playerName = info?.name || pid;
 
       const roster = (info?.team || [])
-        .map(cleanMon)
+        .map(statMonName)
         .filter(Boolean)
         .slice(0, 6);
 
