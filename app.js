@@ -141,10 +141,29 @@ function computePokemonStats(matches) {
   let totalUses = 0;
   const totalGames = matches.length;
 
+  function getRow(mon) {
+    if (!map.has(mon)) {
+      map.set(mon, {
+        mon,
+        uses: 0,
+        wins: 0,
+        losses: 0,
+        gamesPresent: 0,
+
+        trueUses: 0,
+        trueWins: 0,
+        trueLosses: 0,
+      });
+    }
+    return map.get(mon);
+  }
+
   for (const item of matches) {
     const winner = item.winner || null;
     const teams = item.teams || {};
+
     const presentThisGame = new Set();
+    const sidesThisGame = new Map(); // mon -> [{ playerName, isWinner }]
 
     for (const [pid, info] of Object.entries(teams)) {
       const playerName = info?.name || pid;
@@ -160,10 +179,7 @@ function computePokemonStats(matches) {
       for (const mon of rosterUniq) {
         totalUses++;
 
-        if (!map.has(mon)) {
-          map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
-        }
-        const row = map.get(mon);
+        const row = getRow(mon);
         row.uses++;
 
         if (winner) {
@@ -172,14 +188,27 @@ function computePokemonStats(matches) {
         }
 
         presentThisGame.add(mon);
+
+        if (!sidesThisGame.has(mon)) sidesThisGame.set(mon, []);
+        sidesThisGame.get(mon).push({ playerName, isWinner });
       }
     }
 
     for (const mon of presentThisGame) {
-      if (!map.has(mon)) {
-        map.set(mon, { mon, uses: 0, wins: 0, losses: 0, gamesPresent: 0 });
+      getRow(mon).gamesPresent++;
+    }
+
+    // TRUE winrate: only count games where exactly one side used the mon
+    if (winner) {
+      for (const [mon, sides] of sidesThisGame.entries()) {
+        if (sides.length !== 1) continue; // ignore mirror games
+
+        const row = getRow(mon);
+        row.trueUses++;
+
+        if (sides[0].isWinner) row.trueWins++;
+        else row.trueLosses++;
       }
-      map.get(mon).gamesPresent++;
     }
   }
 
@@ -187,7 +216,15 @@ function computePokemonStats(matches) {
     const usageUsesPct = totalUses ? (r.uses / totalUses) * 100 : 0;
     const usageGamesPct = totalGames ? (r.gamesPresent / totalGames) * 100 : 0;
     const winrate = r.uses ? (r.wins / r.uses) * 100 : null;
-    return { ...r, usageUsesPct, usageGamesPct, winrate };
+    const trueWinrate = r.trueUses ? (r.trueWins / r.trueUses) * 100 : null;
+
+    return {
+      ...r,
+      usageUsesPct,
+      usageGamesPct,
+      winrate,
+      trueWinrate,
+    };
   });
 
   rows.sort((a, b) => {
@@ -214,7 +251,7 @@ function renderStats(filtered) {
       Games: ${totalGames} · Team-slot uses: ${totalUses}
       ${hasWinner ? "" : " · Winrate unavailable (missing winner in test.json)"}
       <br/>
-      Mirror matches are handled automatically (each side counts as one use; one win + one loss).
+      WR = all uses, including mirrors. True WR = only games where exactly one side brought that Pokémon.
     </small>
   `;
 
@@ -230,7 +267,8 @@ function renderStats(filtered) {
         <th>Usage% (Games)</th>
         <th>Wins</th>
         <th>Losses</th>
-        <th>Winrate</th>
+        <th>WR</th>
+        <th>True WR</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -239,7 +277,12 @@ function renderStats(filtered) {
   const tbody = table.querySelector("tbody");
   for (const r of top) {
     const tr = document.createElement("tr");
+
     const wrText = r.winrate == null ? "—" : `${r.winrate.toFixed(1)}%`;
+    const trueWrText = r.trueWinrate == null
+      ? "—"
+      : `${r.trueWinrate.toFixed(1)}% (${r.trueWins}-${r.trueLosses})`;
+
     tr.innerHTML = `
       <td>${r.mon}</td>
       <td>${r.uses}</td>
@@ -249,6 +292,7 @@ function renderStats(filtered) {
       <td>${r.wins}</td>
       <td>${r.losses}</td>
       <td>${wrText}</td>
+      <td>${trueWrText}</td>
     `;
     tbody.appendChild(tr);
   }
