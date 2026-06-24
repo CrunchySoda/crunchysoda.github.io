@@ -216,7 +216,6 @@ function computePokemonStats(matches) {
 
   return { rows, totalUses, totalGames };
 }
-
 function computeCommonTeammates(matches, targetMon) {
   const target = statMonName(targetMon);
   const teammateCounts = new Map();
@@ -252,6 +251,7 @@ function computeCommonTeammates(matches, targetMon) {
     }))
     .sort((a, b) => b.count - a.count);
 }
+
 
 function renderTeammates(filtered, mon) {
   const rows = computeCommonTeammates(filtered, mon).slice(0, 12);
