@@ -207,3 +207,8 @@ small {
   opacity: 0.85;
 }
 
+.teammatesBox {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #2a2a3a;
+}
