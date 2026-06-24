@@ -207,6 +207,14 @@ small {
   opacity: 0.85;
 }
 
+.clickableStatRow {
+  cursor: pointer;
+}
+
+.clickableStatRow:hover {
+  background: #1f1f2c;
+}
+
 .teammatesBox {
   margin-top: 14px;
   padding-top: 10px;
