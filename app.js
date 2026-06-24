@@ -334,7 +334,11 @@ function renderStats(filtered) {
       : `${r.trueWinrate.toFixed(1)}% (${r.trueWins}-${r.trueLosses})`;
 
     tr.innerHTML = `
-      <td>${r.mon}</td>
+      <td>
+        <button class="statMonBtn" type="button">
+          ${r.mon}
+        </button>
+      </td>
       <td>${r.uses}</td>
       <td>${r.usageUsesPct.toFixed(2)}%</td>
       <td>${r.gamesPresent}</td>
@@ -345,12 +349,15 @@ function renderStats(filtered) {
       <td>${trueWrText}</td>
     `;
 
-    tr.addEventListener("click", () => {
-      const oldBox = statsPanel.querySelector(".teammatesBox");
-      if (oldBox) oldBox.remove();
+    const btn = tr.querySelector(".statMonBtn");
+
+    btn.addEventListener("click", () => {
+      const existing = statsPanel.querySelector(".teammatesBox");
+      if (existing) existing.remove();
 
       const html = renderTeammates(filtered, r.mon);
-      statsPanel.insertAdjacentHTML("beforeend", html);
+
+      table.insertAdjacentHTML("beforebegin", html);
     });
 
     tbody.appendChild(tr);
