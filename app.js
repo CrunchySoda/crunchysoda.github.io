@@ -8,11 +8,20 @@ const clearBtn = document.getElementById("clearBtn");
 
 const statsPanel = document.getElementById("statsPanel");
 const statsToggleBtn = document.getElementById("statsToggleBtn");
-let showStats = false;
 
+let showStats = false;
 let allData = [];
 
 /* -------------------- helpers -------------------- */
+
+function norm(s) {
+  return (s ?? "").toString().trim().toLowerCase();
+}
+
+function cleanMon(mon) {
+  return (mon ?? "").toString().split(",")[0].trim();
+}
+
 function statMonName(mon) {
   const clean = cleanMon(mon);
 
@@ -28,11 +37,6 @@ function statMonName(mon) {
   return clean;
 }
 
-function norm(s) {
-  return (s ?? "").toString().trim().toLowerCase();
-}
-
-// Showdown toID: remove ALL non-alnum (no hyphens/spaces/punct)
 function toId(s) {
   return (s ?? "")
     .toString()
@@ -40,59 +44,34 @@ function toId(s) {
     .replace(/[^a-z0-9]/g, "");
 }
 
-function cleanMon(mon) {
-  // "Froslass, F" -> "Froslass"
-  return (mon ?? "").toString().split(",")[0].trim();
-}
-
-/**
- * Formes can be written a few different ways in logs.
- * This helps normalize some common ones BEFORE toId.
- */
 function normalizeMonName(mon) {
-  let s = cleanMon(mon);
-
-  // unify common punctuation variants
-  s = s.replace(/’/g, "'");
-
-  // normalize a few frequent format differences
-  // (these are safe even if not present)
-  s = s.replace(/^Basculin-Blue-Striped$/i, "Basculin-Blue-Striped");
-  s = s.replace(/^Basculin-White-Striped$/i, "Basculin-White-Striped");
-
-  return s;
+  return cleanMon(mon).replace(/’/g, "'");
 }
 
 function monToSpriteId(monRaw) {
   const mon = normalizeMonName(monRaw);
-
-  // Explicit overrides for common ZU formes that are frequently mismatched
-  const OVERRIDE = {
-
-
-    "oricorio-baile": "oricoriobaile",
-    "oricorio-pompom": "oricoriopompom",
-    "oricorio-pau": "oricoriopau",
-    "oricorio-sensu": "oricoriosensu",
-  };
-
   const k = mon.toLowerCase().replace(/’/g, "'").trim();
 
-  if (OVERRIDE[k]) {
-    return OVERRIDE[k];
-  }
+  const OVERRIDE = {
+    "oricorio-pa'u": "oricorio-pau",
+    "oricorio-pom-pom": "oricorio-pompom",
+  };
 
-  // Proper showdown sprite naming:
-  // keep hyphens for formes
+  if (OVERRIDE[k]) return OVERRIDE[k];
+
+  // Keep hyphens for formes: rotom-mow, sneasel-hisui, etc.
   return k
     .replace(/[^a-z0-9\- ]/g, "")
     .replace(/\s+/g, "-");
 }
 
+/* -------------------- dropdown -------------------- */
+
 function populateTournamentDropdown(data) {
   while (tournamentSelect.options.length > 1) tournamentSelect.remove(1);
 
   const groups = [...new Set(data.map(d => d.tournament).filter(Boolean))].sort();
+
   for (const g of groups) {
     const opt = document.createElement("option");
     opt.value = g;
@@ -108,6 +87,8 @@ function populateTournamentDropdown(data) {
     tournamentSelect.value = "__all__";
   }
 }
+
+/* -------------------- filtering -------------------- */
 
 function matchItem(item) {
   const tournamentValue = tournamentSelect.value;
@@ -136,6 +117,7 @@ function matchItem(item) {
 }
 
 /* -------------------- stats -------------------- */
+
 function computePokemonStats(matches) {
   const map = new Map();
   let totalUses = 0;
@@ -149,7 +131,6 @@ function computePokemonStats(matches) {
         wins: 0,
         losses: 0,
         gamesPresent: 0,
-
         trueUses: 0,
         trueWins: 0,
         trueLosses: 0,
@@ -157,47 +138,12 @@ function computePokemonStats(matches) {
     }
     return map.get(mon);
   }
-function computeCommonTeammates(matches, targetMon) {
-  const target = statMonName(targetMon);
-  const teammateCounts = new Map();
-  let targetTeams = 0;
 
-  for (const item of matches) {
-    const teams = item.teams || {};
-
-    for (const info of Object.values(teams)) {
-      const roster = (info?.team || [])
-        .map(statMonName)
-        .filter(Boolean)
-        .slice(0, 6);
-
-      const uniqueRoster = [...new Set(roster)];
-
-      if (!uniqueRoster.includes(target)) continue;
-
-      targetTeams++;
-
-      for (const teammate of uniqueRoster) {
-        if (teammate === target) continue;
-        teammateCounts.set(teammate, (teammateCounts.get(teammate) || 0) + 1);
-      }
-    }
-  }
-
-  return [...teammateCounts.entries()]
-    .map(([mon, count]) => ({
-      mon,
-      count,
-      rate: targetTeams ? (count / targetTeams) * 100 : 0,
-    }))
-    .sort((a, b) => b.count - a.count);
-}
   for (const item of matches) {
     const winner = item.winner || null;
     const teams = item.teams || {};
-
     const presentThisGame = new Set();
-    const sidesThisGame = new Map(); // mon -> [{ playerName, isWinner }]
+    const sidesThisGame = new Map();
 
     for (const [pid, info] of Object.entries(teams)) {
       const playerName = info?.name || pid;
@@ -232,10 +178,10 @@ function computeCommonTeammates(matches, targetMon) {
       getRow(mon).gamesPresent++;
     }
 
-    // TRUE winrate: only count games where exactly one side used the mon
+    // True WR: only count games where exactly one side brought the mon
     if (winner) {
       for (const [mon, sides] of sidesThisGame.entries()) {
-        if (sides.length !== 1) continue; // ignore mirror games
+        if (sides.length !== 1) continue;
 
         const row = getRow(mon);
         row.trueUses++;
@@ -271,77 +217,42 @@ function computeCommonTeammates(matches, targetMon) {
   return { rows, totalUses, totalGames };
 }
 
-function renderStats(filtered) {
-  const { rows, totalUses, totalGames } = computePokemonStats(filtered);
-  const hasWinner = filtered.some(x => x.winner);
+function computeCommonTeammates(matches, targetMon) {
+  const target = statMonName(targetMon);
+  const teammateCounts = new Map();
+  let targetTeams = 0;
 
-  const top = rows.slice(0, 50);
+  for (const item of matches) {
+    const teams = item.teams || {};
 
-  const note = document.createElement("div");
-  note.className = "statsNote";
-  note.innerHTML = `
-    <div class="statsTitle">Pokémon stats (filtered)</div>
-    <small>
-      Games: ${totalGames} · Team-slot uses: ${totalUses}
-      ${hasWinner ? "" : " · Winrate unavailable (missing winner in test.json)"}
-      <br/>
-      WR = all uses, including mirrors. True WR = only games where exactly one side brought that Pokémon.
-    </small>
-  `;
+    for (const info of Object.values(teams)) {
+      const roster = (info?.team || [])
+        .map(statMonName)
+        .filter(Boolean)
+        .slice(0, 6);
 
-  const table = document.createElement("table");
-  table.className = "statsTable";
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Pokémon</th>
-        <th>Uses</th>
-        <th>Usage% (Uses)</th>
-        <th>Games</th>
-        <th>Usage% (Games)</th>
-        <th>Wins</th>
-        <th>Losses</th>
-        <th>WR</th>
-        <th>True WR</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  `;
+      const uniqueRoster = [...new Set(roster)];
 
-  const tbody = table.querySelector("tbody");
-  for (const r of top) {
-    const tr = document.createElement("tr");
+      if (!uniqueRoster.includes(target)) continue;
 
-    const wrText = r.winrate == null ? "—" : `${r.winrate.toFixed(1)}%`;
-    const trueWrText = r.trueWinrate == null
-      ? "—"
-      : `${r.trueWinrate.toFixed(1)}% (${r.trueWins}-${r.trueLosses})`;
-    
-    tr.style.cursor = "pointer";
-    tr.addEventListener("click", () => {
-      const existing = statsPanel.querySelector(".teammatesBox");
-      if (existing) existing.remove();
+      targetTeams++;
 
-      statsPanel.insertAdjacentHTML("beforeend", renderTeammates(filtered, r.mon));
-    });
-    tr.innerHTML = `
-      <td>${r.mon}</td>
-      <td>${r.uses}</td>
-      <td>${r.usageUsesPct.toFixed(2)}%</td>
-      <td>${r.gamesPresent}</td>
-      <td>${r.usageGamesPct.toFixed(2)}%</td>
-      <td>${r.wins}</td>
-      <td>${r.losses}</td>
-      <td>${wrText}</td>
-      <td>${trueWrText}</td>
-    `;
-    tbody.appendChild(tr);
+      for (const teammate of uniqueRoster) {
+        if (teammate === target) continue;
+        teammateCounts.set(teammate, (teammateCounts.get(teammate) || 0) + 1);
+      }
+    }
   }
 
-  statsPanel.innerHTML = "";
-  statsPanel.appendChild(note);
-  statsPanel.appendChild(table);
+  return [...teammateCounts.entries()]
+    .map(([mon, count]) => ({
+      mon,
+      count,
+      rate: targetTeams ? (count / targetTeams) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
 }
+
 function renderTeammates(filtered, mon) {
   const rows = computeCommonTeammates(filtered, mon).slice(0, 12);
 
@@ -371,17 +282,93 @@ function renderTeammates(filtered, mon) {
     </div>
   `;
 }
-/* -------------------- sprites (FIXED) -------------------- */
-/**
- * We use classic pixel sprites FIRST (gen5) to avoid the “3D-ish” look and
- * to improve forme coverage. Then we fall back to other sets.
- */
+
+function renderStats(filtered) {
+  const { rows, totalUses, totalGames } = computePokemonStats(filtered);
+  const hasWinner = filtered.some(x => x.winner);
+  const top = rows.slice(0, 50);
+
+  const note = document.createElement("div");
+  note.className = "statsNote";
+  note.innerHTML = `
+    <div class="statsTitle">Pokémon stats (filtered)</div>
+    <small>
+      Games: ${totalGames} · Team-slot uses: ${totalUses}
+      ${hasWinner ? "" : " · Winrate unavailable (missing winner in test.json)"}
+      <br/>
+      WR = all uses, including mirrors. True WR = only games where exactly one side brought that Pokémon.
+      <br/>
+      Click a Pokémon row to see common teammates.
+    </small>
+  `;
+
+  const table = document.createElement("table");
+  table.className = "statsTable";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Pokémon</th>
+        <th>Uses</th>
+        <th>Usage% (Uses)</th>
+        <th>Games</th>
+        <th>Usage% (Games)</th>
+        <th>Wins</th>
+        <th>Losses</th>
+        <th>WR</th>
+        <th>True WR</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+
+  const tbody = table.querySelector("tbody");
+
+  for (const r of top) {
+    const tr = document.createElement("tr");
+    tr.style.cursor = "pointer";
+
+    const wrText = r.winrate == null ? "—" : `${r.winrate.toFixed(1)}%`;
+    const trueWrText = r.trueWinrate == null
+      ? "—"
+      : `${r.trueWinrate.toFixed(1)}% (${r.trueWins}-${r.trueLosses})`;
+
+    tr.innerHTML = `
+      <td>${r.mon}</td>
+      <td>${r.uses}</td>
+      <td>${r.usageUsesPct.toFixed(2)}%</td>
+      <td>${r.gamesPresent}</td>
+      <td>${r.usageGamesPct.toFixed(2)}%</td>
+      <td>${r.wins}</td>
+      <td>${r.losses}</td>
+      <td>${wrText}</td>
+      <td>${trueWrText}</td>
+    `;
+
+    tr.addEventListener("click", () => {
+      const existing = statsPanel.querySelector(".teammatesBox");
+      if (existing) existing.remove();
+
+      statsPanel.insertAdjacentHTML("beforeend", renderTeammates(filtered, r.mon));
+    });
+
+    tbody.appendChild(tr);
+  }
+
+  statsPanel.innerHTML = "";
+  statsPanel.appendChild(note);
+  statsPanel.appendChild(table);
+}
+
+/* -------------------- sprites -------------------- */
+
 function setSpriteWithFallback(img, urls) {
   let i = 0;
+
   const tryNext = () => {
     if (i >= urls.length) return;
     img.src = urls[i++];
   };
+
   img.onerror = () => tryNext();
   tryNext();
 }
@@ -395,7 +382,6 @@ function spriteImg(monRaw) {
   img.alt = mon;
   img.title = mon;
 
-  // base species fallback: "Basculin-Blue-Striped" -> "Basculin"
   const baseName = mon.includes("-") ? mon.split("-")[0] : mon;
   const baseId = toId(baseName);
 
@@ -405,7 +391,6 @@ function spriteImg(monRaw) {
     `https://play.pokemonshowdown.com/sprites/ani/${id}.gif`,
     `https://play.pokemonshowdown.com/sprites/dex/${id}.png`,
 
-    // last-resort: at least show the base species if the forme filename differs/missing
     `https://play.pokemonshowdown.com/sprites/gen5/${baseId}.png`,
     `https://play.pokemonshowdown.com/sprites/gen5ani/${baseId}.gif`,
     `https://play.pokemonshowdown.com/sprites/dex/${baseId}.png`,
@@ -416,6 +401,7 @@ function spriteImg(monRaw) {
 }
 
 /* -------------------- rendering -------------------- */
+
 function render(data) {
   resultsEl.innerHTML = "";
 
@@ -438,10 +424,10 @@ function render(data) {
     const teams = item.teams || {};
     let entries = Object.entries(teams);
 
-    // If player filter active, show only matching row(s)
     if (playerQuery) {
       entries = entries.filter(([pid, info]) => norm(info?.name).includes(playerQuery));
     }
+
     if (entries.length === 0) entries = Object.entries(teams);
 
     const winnerName = item.winner ? norm(item.winner) : null;
@@ -450,14 +436,12 @@ function render(data) {
       const nameText = (info?.name || pid).toString();
       const isWinner = winnerName && norm(nameText) === winnerName;
 
-      // Entire row clickable to replay
       const row = document.createElement("a");
       row.className = "teamRow";
       row.href = item.link;
       row.target = "_blank";
       row.rel = "noreferrer";
 
-      // winner/loser coloring (only if winner exists)
       if (winnerName) row.classList.add(isWinner ? "winner" : "loser");
 
       const name = document.createElement("div");
@@ -497,15 +481,18 @@ function applyFilters() {
 }
 
 /* -------------------- boot -------------------- */
+
 async function main() {
   try {
     statusEl.textContent = "Loading…";
 
     const url = `test.json?cb=${Date.now()}`;
     const res = await fetch(url, { cache: "no-store" });
+
     if (!res.ok) throw new Error(`Failed to load test.json (${res.status})`);
 
     allData = await res.json();
+
     populateTournamentDropdown(allData);
     applyFilters();
   } catch (e) {
