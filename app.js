@@ -304,6 +304,7 @@ function renderStats(filtered) {
 
   const table = document.createElement("table");
   table.className = "statsTable";
+
   table.innerHTML = `
     <thead>
       <tr>
@@ -325,7 +326,7 @@ function renderStats(filtered) {
 
   for (const r of top) {
     const tr = document.createElement("tr");
-    tr.style.cursor = "pointer";
+    tr.className = "clickableStatRow";
 
     const wrText = r.winrate == null ? "—" : `${r.winrate.toFixed(1)}%`;
     const trueWrText = r.trueWinrate == null
@@ -345,10 +346,11 @@ function renderStats(filtered) {
     `;
 
     tr.addEventListener("click", () => {
-      const existing = statsPanel.querySelector(".teammatesBox");
-      if (existing) existing.remove();
+      const oldBox = statsPanel.querySelector(".teammatesBox");
+      if (oldBox) oldBox.remove();
 
-      statsPanel.insertAdjacentHTML("beforeend", renderTeammates(filtered, r.mon));
+      const html = renderTeammates(filtered, r.mon);
+      statsPanel.insertAdjacentHTML("beforeend", html);
     });
 
     tbody.appendChild(tr);
