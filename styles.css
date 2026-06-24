@@ -220,3 +220,18 @@ small {
   padding-top: 10px;
   border-top: 1px solid #2a2a3a;
 }
+.statMonBtn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #7db5ff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.statMonBtn:hover {
+    color: white;
+    text-decoration: underline;
+}
+
