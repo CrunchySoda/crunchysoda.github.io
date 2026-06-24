@@ -157,7 +157,41 @@ function computePokemonStats(matches) {
     }
     return map.get(mon);
   }
+function computeCommonTeammates(matches, targetMon) {
+  const target = statMonName(targetMon);
+  const teammateCounts = new Map();
+  let targetTeams = 0;
 
+  for (const item of matches) {
+    const teams = item.teams || {};
+
+    for (const info of Object.values(teams)) {
+      const roster = (info?.team || [])
+        .map(statMonName)
+        .filter(Boolean)
+        .slice(0, 6);
+
+      const uniqueRoster = [...new Set(roster)];
+
+      if (!uniqueRoster.includes(target)) continue;
+
+      targetTeams++;
+
+      for (const teammate of uniqueRoster) {
+        if (teammate === target) continue;
+        teammateCounts.set(teammate, (teammateCounts.get(teammate) || 0) + 1);
+      }
+    }
+  }
+
+  return [...teammateCounts.entries()]
+    .map(([mon, count]) => ({
+      mon,
+      count,
+      rate: targetTeams ? (count / targetTeams) * 100 : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+}
   for (const item of matches) {
     const winner = item.winner || null;
     const teams = item.teams || {};
@@ -282,7 +316,14 @@ function renderStats(filtered) {
     const trueWrText = r.trueWinrate == null
       ? "—"
       : `${r.trueWinrate.toFixed(1)}% (${r.trueWins}-${r.trueLosses})`;
+    
+    tr.style.cursor = "pointer";
+    tr.addEventListener("click", () => {
+      const existing = statsPanel.querySelector(".teammatesBox");
+      if (existing) existing.remove();
 
+      statsPanel.insertAdjacentHTML("beforeend", renderTeammates(filtered, r.mon));
+    });
     tr.innerHTML = `
       <td>${r.mon}</td>
       <td>${r.uses}</td>
@@ -301,7 +342,35 @@ function renderStats(filtered) {
   statsPanel.appendChild(note);
   statsPanel.appendChild(table);
 }
+function renderTeammates(filtered, mon) {
+  const rows = computeCommonTeammates(filtered, mon).slice(0, 12);
 
+  if (!rows.length) return "";
+
+  return `
+    <div class="teammatesBox">
+      <div class="statsTitle">Common teammates for ${mon}</div>
+      <table class="statsTable">
+        <thead>
+          <tr>
+            <th>Teammate</th>
+            <th>Times Together</th>
+            <th>Pair Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>${r.mon}</td>
+              <td>${r.count}</td>
+              <td>${r.rate.toFixed(1)}%</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
 /* -------------------- sprites (FIXED) -------------------- */
 /**
  * We use classic pixel sprites FIRST (gen5) to avoid the “3D-ish” look and
