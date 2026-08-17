@@ -15,11 +15,11 @@
 
     <section class="controls">
       <div class="control">
-        <label for="tournamentFilter">Tournament</label>
-        <select id="tournamentFilter">
-          <option value="__all__">All tournaments</option>
-        </select>
-
+        <label for="tournamentBtn">Tournament</label>
+        <div class="multiSelect" id="tournamentMultiSelect">
+          <button id="tournamentBtn" type="button" class="multiSelectBtn">All tournaments</button>
+          <div id="tournamentMenu" class="multiSelectMenu hidden"></div>
+        </div>
       </div>
 
       <div class="control">

@@ -1,7 +1,9 @@
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
 
-const tournamentSelect = document.getElementById("tournamentFilter");
+const tournamentBtn = document.getElementById("tournamentBtn");
+const tournamentMenu = document.getElementById("tournamentMenu");
+const tournamentMultiSelect = document.getElementById("tournamentMultiSelect");
 const playerInput = document.getElementById("playerFilter");
 const pokemonInput = document.getElementById("pokemonFilter");
 const clearBtn = document.getElementById("clearBtn");
@@ -11,6 +13,9 @@ const statsToggleBtn = document.getElementById("statsToggleBtn");
 
 let showStats = false;
 let allData = [];
+
+// Selected tournaments. Empty set = all tournaments.
+const selectedTournaments = new Set();
 
 /* -------------------- helpers -------------------- */
 
@@ -67,36 +72,112 @@ function monToSpriteId(monRaw) {
 
 /* -------------------- dropdown -------------------- */
 
+function updateTournamentButtonLabel() {
+  if (selectedTournaments.size === 0) {
+    tournamentBtn.textContent = "All tournaments";
+  } else if (selectedTournaments.size === 1) {
+    tournamentBtn.textContent = [...selectedTournaments][0];
+  } else {
+    tournamentBtn.textContent = `${selectedTournaments.size} tournaments`;
+  }
+}
+
 function populateTournamentDropdown(data) {
-  while (tournamentSelect.options.length > 1) tournamentSelect.remove(1);
+  tournamentMenu.innerHTML = "";
 
   const groups = [...new Set(data.map(d => d.tournament).filter(Boolean))].sort();
 
-  for (const g of groups) {
-    const opt = document.createElement("option");
-    opt.value = g;
-    opt.textContent = g;
-    tournamentSelect.appendChild(opt);
+  if (groups.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "multiSelectEmpty";
+    empty.textContent = "No tournament data (check test.json)";
+    tournamentMenu.appendChild(empty);
+    return;
   }
 
-  if (groups.length === 0) {
-    const opt = document.createElement("option");
-    opt.value = "__none__";
-    opt.textContent = "No tournament data (check test.json)";
-    tournamentSelect.appendChild(opt);
-    tournamentSelect.value = "__all__";
+  // "All tournaments" resets every checkbox.
+  const allRow = document.createElement("label");
+  allRow.className = "multiSelectOption multiSelectAll";
+
+  const allCb = document.createElement("input");
+  allCb.type = "checkbox";
+  allCb.checked = true;
+
+  allRow.appendChild(allCb);
+  allRow.appendChild(document.createTextNode("All tournaments"));
+  tournamentMenu.appendChild(allRow);
+
+  const checkboxes = [];
+
+  const syncFromCheckboxes = () => {
+    selectedTournaments.clear();
+
+    for (const cb of checkboxes) {
+      if (cb.checked) selectedTournaments.add(cb.value);
+    }
+
+    // Everything checked is the same as no filter.
+    if (selectedTournaments.size === checkboxes.length) {
+      selectedTournaments.clear();
+      for (const cb of checkboxes) cb.checked = false;
+    }
+
+    allCb.checked = selectedTournaments.size === 0;
+
+    updateTournamentButtonLabel();
+    applyFilters();
+  };
+
+  allCb.addEventListener("change", () => {
+    for (const cb of checkboxes) cb.checked = false;
+    selectedTournaments.clear();
+    allCb.checked = true;
+
+    updateTournamentButtonLabel();
+    applyFilters();
+  });
+
+  for (const g of groups) {
+    const row = document.createElement("label");
+    row.className = "multiSelectOption";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = g;
+    cb.checked = selectedTournaments.has(g);
+    cb.addEventListener("change", syncFromCheckboxes);
+
+    checkboxes.push(cb);
+
+    row.appendChild(cb);
+    row.appendChild(document.createTextNode(g));
+    tournamentMenu.appendChild(row);
   }
+
+  updateTournamentButtonLabel();
+}
+
+function resetTournamentFilter() {
+  selectedTournaments.clear();
+
+  for (const cb of tournamentMenu.querySelectorAll("input[type=checkbox]")) {
+    cb.checked = false;
+  }
+
+  const allCb = tournamentMenu.querySelector(".multiSelectAll input");
+  if (allCb) allCb.checked = true;
+
+  updateTournamentButtonLabel();
 }
 
 /* -------------------- filtering -------------------- */
 
 function matchItem(item) {
-  const tournamentValue = tournamentSelect.value;
   const p = norm(playerInput.value);
   const m = norm(pokemonInput.value);
 
-  if (tournamentValue !== "__all__" && tournamentValue !== "__none__") {
-    if ((item.tournament || "") !== tournamentValue) return false;
+  if (selectedTournaments.size > 0) {
+    if (!selectedTournaments.has(item.tournament || "")) return false;
   }
 
   const teams = item.teams || {};
@@ -510,7 +591,17 @@ async function main() {
   }
 }
 
-tournamentSelect.addEventListener("change", applyFilters);
+tournamentBtn.addEventListener("click", () => {
+  tournamentMenu.classList.toggle("hidden");
+});
+
+// Close the dropdown when clicking anywhere outside it.
+document.addEventListener("click", e => {
+  if (!tournamentMultiSelect.contains(e.target)) {
+    tournamentMenu.classList.add("hidden");
+  }
+});
+
 playerInput.addEventListener("input", applyFilters);
 pokemonInput.addEventListener("input", applyFilters);
 
@@ -522,7 +613,7 @@ statsToggleBtn.addEventListener("click", () => {
 });
 
 clearBtn.addEventListener("click", () => {
-  tournamentSelect.value = "__all__";
+  resetTournamentFilter();
   playerInput.value = "";
   pokemonInput.value = "";
   applyFilters();
