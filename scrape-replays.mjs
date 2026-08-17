@@ -74,12 +74,16 @@ const THREAD_GROUPS = {
     "https://www.smogon.com/forums/threads/zu-seasonal-round-6-frosmoth-is-banned-unburden-is-unbanned.3785574/",
     "https://www.smogon.com/forums/threads/zu-seasonal-round-7-losers-only-frosmoth-is-banned-unburden-is-unbanned.3785945/",
     "https://www.smogon.com/forums/threads/zu-seasonal-round-8.3786262/",
+    "https://www.smogon.com/forums/threads/zu-seasonal-round-9-losers-only.3786643/",
+    "https://www.smogon.com/forums/threads/zu-seasonal-round-10.3786966/",
   ],
 
   "ZUPL": [
     "https://www.smogon.com/forums/threads/zupl-viii-week-one-frosmoth-banned-unburden-unbanned-in-sv-magnemite-banned-in-adv.3785557/",
     "https://www.smogon.com/forums/threads/zupl-viii-week-two.3785882/#post-11075304",
     "https://www.smogon.com/forums/threads/zupl-viii-week-three.3786208/",
+    "https://www.smogon.com/forums/threads/zupl-viii-week-4.3786604/",
+    "https://www.smogon.com/forums/threads/zupl-viii-week-5.3786915/",
   ],
 };
 
