@@ -85,6 +85,9 @@ const THREAD_GROUPS = {
     "https://www.smogon.com/forums/threads/zupl-viii-week-4.3786604/",
     "https://www.smogon.com/forums/threads/zupl-viii-week-5.3786915/",
     "https://www.smogon.com/forums/threads/zupl-viii-week-six.3787277/",
+    "https://www.smogon.com/forums/threads/zupl-viii-week-7.3787681/",
+    "https://www.smogon.com/forums/threads/zupl-viii-semifinals.3788039/#post-11125163",
+    "https://www.smogon.com/forums/threads/zupl-viii-finals.3788317/",
   ],
 };
 
