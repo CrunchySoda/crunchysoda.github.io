@@ -89,6 +89,14 @@ const THREAD_GROUPS = {
     "https://www.smogon.com/forums/threads/zupl-viii-semifinals.3788039/#post-11125163",
     "https://www.smogon.com/forums/threads/zupl-viii-finals.3788317/",
   ],
+
+  "UMPL": [
+    "https://www.smogon.com/forums/threads/umpl-vi-week-1.3789285/page-2#post-11160205",
+  ],
+
+  "SWISS": [
+    "https://www.smogon.com/forums/threads/zu-swiss-iv-round-3.3789414/",
+  ],
 };
 
 const NORMAL_HEADERS = {
@@ -174,6 +182,9 @@ function normalizeThreadUrl(rawUrl) {
   // Important: removes #post-... before adding /page-2.
   url.hash = "";
   url.search = "";
+
+  // Also strip a pasted /page-N so pagination starts from the thread root.
+  url.pathname = url.pathname.replace(/\/page-\d+\/?$/i, "/");
 
   let normalized = url.toString();
 
