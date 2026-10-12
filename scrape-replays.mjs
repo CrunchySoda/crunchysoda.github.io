@@ -92,6 +92,7 @@ const THREAD_GROUPS = {
 
   "UMPL": [
     "https://www.smogon.com/forums/threads/umpl-vi-week-1.3789285/page-2#post-11160205",
+    "https://www.smogon.com/forums/threads/umpl-vi-week-2.3789638/#post-11162218",
   ],
 
   "SWISS": [
