@@ -93,10 +93,13 @@ const THREAD_GROUPS = {
   "UMPL": [
     "https://www.smogon.com/forums/threads/umpl-vi-week-1.3789285/page-2#post-11160205",
     "https://www.smogon.com/forums/threads/umpl-vi-week-2.3789638/#post-11162218",
+    "https://www.smogon.com/forums/threads/umpl-vi-week-3.3789953/",
   ],
 
   "SWISS": [
     "https://www.smogon.com/forums/threads/zu-swiss-iv-round-3.3789414/",
+    "https://www.smogon.com/forums/threads/zu-swiss-iv-round-4.3789721/",
+    "https://www.smogon.com/forums/threads/zu-swiss-iv-round-5.3790062/",
   ],
 };
 
@@ -308,6 +311,19 @@ async function getAllReplayLinks(rawThreadUrl) {
 
     const html = await fetchText(pageUrl);
     pagesScanned++;
+
+    /*
+     * Smogon serves a "Checking your browser..." stub (HTTP 200) to plain
+     * HTTP clients since ~Oct 2026. Fail loudly instead of reporting a
+     * thread as empty: real thread pages always contain post markup.
+     */
+    if (!html.includes("message--post")) {
+      throw new Error(
+        `Smogon served a browser-check/empty page for ${pageUrl} — ` +
+        `forum scraping is unavailable from this client. ` +
+        `Use --from-links with links collected in a real browser instead.`
+      );
+    }
 
     // Re-check on every page in case the thread grew during the run.
     totalPages = Math.max(totalPages, detectTotalPages(html, threadUrl));
@@ -656,11 +672,27 @@ async function main() {
   const dryRun = argv.includes("--dry-run");
   const push = argv.includes("--push");
 
-  const unknown = argv.filter(a => a !== "--dry-run" && a !== "--push");
+  let fromLinksPath = null;
+  const fromLinksIdx = argv.indexOf("--from-links");
+
+  if (fromLinksIdx !== -1) {
+    fromLinksPath = argv[fromLinksIdx + 1];
+
+    if (!fromLinksPath || fromLinksPath.startsWith("--")) {
+      console.error("--from-links needs a file path.");
+      process.exit(2);
+    }
+  }
+
+  const unknown = argv.filter((a, i) => {
+    if (a === "--dry-run" || a === "--push" || a === "--from-links") return false;
+    if (fromLinksIdx !== -1 && i === fromLinksIdx + 1) return false;
+    return true;
+  });
 
   if (unknown.length > 0) {
     console.error("Unknown argument(s):", unknown.join(" "));
-    console.error("Usage: node scrape-replays.mjs [--dry-run] [--push]");
+    console.error("Usage: node scrape-replays.mjs [--dry-run] [--push] [--from-links file.json]");
     process.exit(2);
   }
 
@@ -697,37 +729,80 @@ async function main() {
   );
 
   /*
-   * Scan every numbered page of every configured thread.
-   * Any temporary forum failure throws and stops the run before any write.
+   * Discover replay links: either scan every page of every configured
+   * thread, or (--from-links) load links collected in a real browser,
+   * since Smogon's browser check blocks plain HTTP clients.
+   *
+   * --from-links file format:
+   *   [{ "tournament": "SWISS", "thread_url": "https://...",
+   *      "links": ["https://replay.pokemonshowdown.com/gen9zu-...", ...] }]
    */
   const jobsByKey = new Map();
 
   let scannedThreads = 0;
   let scannedPages = 0;
 
-  for (const [tournament, threads] of Object.entries(THREAD_GROUPS)) {
-    for (const rawThreadUrl of threads) {
-      const threadUrl = normalizeThreadUrl(rawThreadUrl);
-      const result = await getAllReplayLinks(threadUrl);
+  if (fromLinksPath) {
+    const entries = JSON.parse(fs.readFileSync(fromLinksPath, "utf8"));
 
-      scannedThreads++;
-      scannedPages += result.pagesScanned;
+    if (!Array.isArray(entries)) {
+      throw new Error("--from-links file must be a JSON array");
+    }
 
-      for (const replayUrl of result.links) {
-        const key = replayKey(replayUrl);
-
-        if (!key || jobsByKey.has(key)) {
-          continue;
-        }
-
-        jobsByKey.set(key, {
-          tournament,
-          thread_url: threadUrl,
-          link: replayUrl,
-        });
+    for (const entry of entries) {
+      if (!entry?.tournament || !entry?.thread_url || !Array.isArray(entry?.links)) {
+        throw new Error(
+          "--from-links entries need tournament, thread_url, links[]"
+        );
       }
 
-      await sleep(400);
+      const threadUrl = normalizeThreadUrl(entry.thread_url);
+      scannedThreads++;
+
+      for (const rawLink of entry.links) {
+        const link = normalizeReplayUrl(rawLink);
+        const key = replayKey(link);
+
+        if (!key) {
+          throw new Error(`Not a Gen 9 ZU replay URL: ${rawLink}`);
+        }
+
+        if (!jobsByKey.has(key)) {
+          jobsByKey.set(key, {
+            tournament: entry.tournament,
+            thread_url: threadUrl,
+            link,
+          });
+        }
+      }
+    }
+
+    console.log(`Loaded links from ${fromLinksPath} (browser-collected).`);
+  } else {
+    for (const [tournament, threads] of Object.entries(THREAD_GROUPS)) {
+      for (const rawThreadUrl of threads) {
+        const threadUrl = normalizeThreadUrl(rawThreadUrl);
+        const result = await getAllReplayLinks(threadUrl);
+
+        scannedThreads++;
+        scannedPages += result.pagesScanned;
+
+        for (const replayUrl of result.links) {
+          const key = replayKey(replayUrl);
+
+          if (!key || jobsByKey.has(key)) {
+            continue;
+          }
+
+          jobsByKey.set(key, {
+            tournament,
+            thread_url: threadUrl,
+            link: replayUrl,
+          });
+        }
+
+        await sleep(400);
+      }
     }
   }
 
