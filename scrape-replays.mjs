@@ -94,12 +94,15 @@ const THREAD_GROUPS = {
     "https://www.smogon.com/forums/threads/umpl-vi-week-1.3789285/page-2#post-11160205",
     "https://www.smogon.com/forums/threads/umpl-vi-week-2.3789638/#post-11162218",
     "https://www.smogon.com/forums/threads/umpl-vi-week-3.3789953/",
+    "https://www.smogon.com/forums/threads/umpl-vi-week-4.3790318/",
+    "https://www.smogon.com/forums/threads/umpl-vi-week-5.3790733/",
   ],
 
   "SWISS": [
     "https://www.smogon.com/forums/threads/zu-swiss-iv-round-3.3789414/",
     "https://www.smogon.com/forums/threads/zu-swiss-iv-round-4.3789721/",
     "https://www.smogon.com/forums/threads/zu-swiss-iv-round-5.3790062/",
+    "https://www.smogon.com/forums/threads/zu-swiss-iv-round-6.3790452/",
   ],
 };
 
