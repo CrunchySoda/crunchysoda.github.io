@@ -96,6 +96,8 @@ const THREAD_GROUPS = {
     "https://www.smogon.com/forums/threads/umpl-vi-week-3.3789953/",
     "https://www.smogon.com/forums/threads/umpl-vi-week-4.3790318/",
     "https://www.smogon.com/forums/threads/umpl-vi-week-5.3790733/",
+    "https://www.smogon.com/forums/threads/umpl-vi-week-6.3791041/",
+    "https://www.smogon.com/forums/threads/umpl-vi-week-7.3791364/",
   ],
 
   "SWISS": [
@@ -103,6 +105,9 @@ const THREAD_GROUPS = {
     "https://www.smogon.com/forums/threads/zu-swiss-iv-round-4.3789721/",
     "https://www.smogon.com/forums/threads/zu-swiss-iv-round-5.3790062/",
     "https://www.smogon.com/forums/threads/zu-swiss-iv-round-6.3790452/",
+    "https://www.smogon.com/forums/threads/zu-swiss-iv-round-of-16.3790829/",
+    "https://www.smogon.com/forums/threads/zu-swiss-iv-quarter-finals.3791127/",
+    "https://www.smogon.com/forums/threads/zu-swiss-iv-semi-finals.3791442/",
   ],
 };
 
