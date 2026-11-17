@@ -207,9 +207,15 @@ function normalizeThreadUrl(rawUrl) {
   return normalized;
 }
 
+/*
+ * Accepts any Gen 9 replay URL so an explicitly curated link can be stored
+ * even when the game was played in the wrong room format (e.g. a ZU match
+ * uploaded as smogtours-gen9pu). Thread scanning stays ZU-only via the
+ * stricter regex in extractReplayLinks.
+ */
 function normalizeReplayUrl(rawUrl) {
   const match = String(rawUrl ?? "").match(
-    /https:\/\/replay\.pokemonshowdown\.com\/(?:smogtours-)?gen9zu-[a-z0-9-]+/i
+    /https:\/\/replay\.pokemonshowdown\.com\/(?:smogtours-)?gen9[a-z0-9]*-[a-z0-9-]+/i
   );
 
   return match ? match[0] : "";
