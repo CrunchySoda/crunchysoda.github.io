@@ -17,6 +17,28 @@ let allData = [];
 // Selected tournaments. Empty set = all tournaments.
 const selectedTournaments = new Set();
 
+/*
+ * Player aliases (aliases.json): canonical name -> known alt names.
+ * Applied at display/search time only; test.json keeps raw replay names.
+ */
+let aliasToCanonical = new Map();
+
+function buildAliasMap(aliases) {
+  aliasToCanonical = new Map();
+
+  for (const [canonical, alts] of Object.entries(aliases || {})) {
+    aliasToCanonical.set(norm(canonical), canonical);
+
+    for (const alt of alts || []) {
+      aliasToCanonical.set(norm(alt), canonical);
+    }
+  }
+}
+
+function canonicalName(rawName) {
+  return aliasToCanonical.get(norm(rawName)) ?? (rawName ?? "");
+}
+
 /* -------------------- helpers -------------------- */
 
 function norm(s) {
@@ -185,7 +207,9 @@ function matchItem(item) {
   const mons = Object.values(teams).flatMap(x => (x?.team || []).map(cleanMon));
 
   if (p) {
-    const ok = players.some(name => norm(name).includes(p));
+    const ok = players.some(name =>
+      norm(name).includes(p) || norm(canonicalName(name)).includes(p)
+    );
     if (!ok) return false;
   }
 
@@ -515,7 +539,10 @@ function render(data) {
     let entries = Object.entries(teams);
 
     if (playerQuery) {
-      entries = entries.filter(([pid, info]) => norm(info?.name).includes(playerQuery));
+      entries = entries.filter(([pid, info]) =>
+        norm(info?.name).includes(playerQuery) ||
+        norm(canonicalName(info?.name)).includes(playerQuery)
+      );
     }
 
     if (entries.length === 0) entries = Object.entries(teams);
@@ -523,8 +550,10 @@ function render(data) {
     const winnerName = item.winner ? norm(item.winner) : null;
 
     for (const [pid, info] of entries) {
-      const nameText = (info?.name || pid).toString();
-      const isWinner = winnerName && norm(nameText) === winnerName;
+      const rawName = (info?.name || pid).toString();
+      const nameText = canonicalName(rawName) || rawName;
+      // Winner is matched on the RAW replay name; aliases only change display.
+      const isWinner = winnerName && norm(rawName) === winnerName;
 
       const row = document.createElement("a");
       row.className = "teamRow";
@@ -537,6 +566,11 @@ function render(data) {
       const name = document.createElement("div");
       name.className = "teamRowName";
       name.textContent = nameText;
+
+      if (norm(nameText) !== norm(rawName)) {
+        name.title = `played as ${rawName}`;
+        name.classList.add("aliasedName");
+      }
 
       const mons = document.createElement("div");
       mons.className = "teamRowMons";
@@ -582,6 +616,14 @@ async function main() {
     if (!res.ok) throw new Error(`Failed to load test.json (${res.status})`);
 
     allData = await res.json();
+
+    // Aliases are optional; a missing/broken aliases.json never blocks the site.
+    try {
+      const aliasRes = await fetch(`aliases.json?cb=${Date.now()}`, { cache: "no-store" });
+      if (aliasRes.ok) buildAliasMap(await aliasRes.json());
+    } catch {
+      buildAliasMap({});
+    }
 
     populateTournamentDropdown(allData);
     applyFilters();

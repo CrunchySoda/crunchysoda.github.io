@@ -204,6 +204,13 @@ button:hover {
   font-size: 15px;
 }
 
+/* Aliased player names (hover shows the alt actually used) */
+.aliasedName {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
 /* Winner / loser colors */
 .teamRow.winner .teamRowName {
   color: #35d07f;
